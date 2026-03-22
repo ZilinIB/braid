@@ -90,16 +90,30 @@ describe("state machine", () => {
     expect(result.allowed).toBe(true);
   });
 
-  it("allows approved -> done by chief_of_staff", () => {
+  it("allows approved -> done by chief_of_staff with reason", () => {
     const status = makeStatus({ state: "approved" });
-    const result = checkTransition(manifest, status, "done", "chief_of_staff", yes);
+    const result = checkTransition(manifest, status, "done", "chief_of_staff", yes, { reason: "Work complete" });
     expect(result.allowed).toBe(true);
   });
 
-  it("allows cancellation by chief_of_staff", () => {
+  it("rejects approved -> done without reason", () => {
+    const status = makeStatus({ state: "approved" });
+    const result = checkTransition(manifest, status, "done", "chief_of_staff", yes);
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toContain("final summary reason");
+  });
+
+  it("allows cancellation by chief_of_staff with reason", () => {
+    const status = makeStatus({ state: "planned" });
+    const result = checkTransition(manifest, status, "cancelled", "chief_of_staff", yes, { reason: "No longer needed" });
+    expect(result.allowed).toBe(true);
+  });
+
+  it("rejects cancellation without reason", () => {
     const status = makeStatus({ state: "planned" });
     const result = checkTransition(manifest, status, "cancelled", "chief_of_staff", yes);
-    expect(result.allowed).toBe(true);
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toContain("cancellation reason");
   });
 
   it("rejects cancellation by non-CoS", () => {

@@ -12,7 +12,8 @@
 // when loaded inside the OpenClaw runtime. For standalone testing, use
 // createWorkflowRuntime() from ../index.ts instead.
 
-import { resolve } from "node:path";
+import { join } from "node:path";
+import { homedir } from "node:os";
 import { loadManifestSync, createWorkflowRuntime, TOOL_DEFINITIONS } from "../index.js";
 
 /**
@@ -28,8 +29,9 @@ export function register(api: {
   const manifestPath = api.resolvePath(
     (api.pluginConfig?.manifestPath as string) ?? "manifests/software-product-company.yaml",
   );
+  const defaultOrgBase = join(homedir(), ".openclaw", "braid");
   const baseDir = api.resolvePath(
-    (api.pluginConfig?.orgBaseDir as string) ?? resolve("~/.openclaw/braid"),
+    (api.pluginConfig?.orgBaseDir as string) ?? defaultOrgBase,
   );
 
   const manifest = loadManifestSync(manifestPath);

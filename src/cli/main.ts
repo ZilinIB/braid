@@ -71,7 +71,9 @@ program
         ...(opts.peerId && opts.peerKind && { peer: { kind: opts.peerKind, id: opts.peerId } }),
       };
 
-      const config = generateOpenClawConfig(manifest, channelBinding);
+      const config = generateOpenClawConfig(manifest, channelBinding, {
+        manifestPath: opts.manifest,
+      });
 
       const configPath = resolve(manifest.generation.targets.openclaw.output_config);
       await writeOpenClawConfig(config, configPath);
@@ -97,7 +99,7 @@ program
   .option("--account-id <id>", "Channel account ID")
   .option("--peer-id <id>", "Peer ID for binding")
   .option("--peer-kind <kind>", "Peer kind for binding")
-  .option("--org-dir <dir>", "Base directory for org data (work orders, reports)", "org")
+  .option("--org-dir <dir>", "Base directory for org data (work orders, reports)", ".")
   .action(async (opts: {
     manifest: string;
     channel: string;
@@ -126,7 +128,11 @@ program
         ...(opts.peerId && opts.peerKind && { peer: { kind: opts.peerKind, id: opts.peerId } }),
       };
 
-      const config = generateOpenClawConfig(manifest, channelBinding);
+      const orgBase = resolve(opts.orgDir);
+      const config = generateOpenClawConfig(manifest, channelBinding, {
+        manifestPath: opts.manifest,
+        orgBaseDir: orgBase,
+      });
       const configPath = resolve(manifest.generation.targets.openclaw.output_config);
       await writeOpenClawConfig(config, configPath);
       console.log(`Config written: ${configPath}`);
@@ -137,7 +143,6 @@ program
       console.log(`Workspaces written: ${written.length} files in ${workspacesDir}`);
 
       // 4. Create org directories
-      const orgBase = resolve(opts.orgDir);
       const woDir = resolve(orgBase, manifest.protocol.work_orders.directory);
       const reportDir = resolve(orgBase, manifest.reporting.daily.store);
       await mkdir(woDir, { recursive: true });
@@ -165,7 +170,7 @@ program
   .option("--account-id <id>", "Channel account ID")
   .option("--peer-id <id>", "Peer ID for binding")
   .option("--peer-kind <kind>", "Peer kind for binding")
-  .option("--org-dir <dir>", "Base directory for org data", "org")
+  .option("--org-dir <dir>", "Base directory for org data", ".")
   .action(async (opts: {
     manifest: string;
     channel: string;
@@ -192,7 +197,11 @@ program
         ...(opts.accountId && { accountId: opts.accountId }),
         ...(opts.peerId && opts.peerKind && { peer: { kind: opts.peerKind, id: opts.peerId } }),
       };
-      const config = generateOpenClawConfig(manifest, channelBinding);
+      const orgBase = resolve(opts.orgDir);
+      const config = generateOpenClawConfig(manifest, channelBinding, {
+        manifestPath: opts.manifest,
+        orgBaseDir: orgBase,
+      });
       const configPath = resolve(manifest.generation.targets.openclaw.output_config);
       await writeOpenClawConfig(config, configPath);
       console.log(`Config: ${configPath}`);
@@ -203,7 +212,6 @@ program
       console.log(`Workspaces: ${written.length} files`);
 
       // Create org directories
-      const orgBase = resolve(opts.orgDir);
       await mkdir(resolve(orgBase, manifest.protocol.work_orders.directory), { recursive: true });
       await mkdir(resolve(orgBase, manifest.reporting.daily.store), { recursive: true });
       console.log(`Org dirs: ${orgBase}`);

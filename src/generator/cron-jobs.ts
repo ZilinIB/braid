@@ -95,7 +95,7 @@ export function generateCronScript(jobs: CronJobSpec[]): string {
   ];
 
   for (const job of jobs) {
-    lines.push(`echo "Creating cron job: ${job.name} (${job.cron})""`);
+    lines.push(`echo "Creating cron job: ${job.name}"`);
     const msg = job.message.replace(/'/g, "'\\''");
     lines.push(
       `openclaw cron add \\`,
@@ -108,6 +108,6 @@ export function generateCronScript(jobs: CronJobSpec[]): string {
     );
   }
 
-  lines.push('echo "All ${jobs.length} daily reporting cron jobs created."');
+  lines.push(`echo "All ${jobs.length} daily reporting cron jobs created."`);
   return lines.join("\n");
 }

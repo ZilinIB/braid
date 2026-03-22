@@ -1,3 +1,4 @@
+import { normalize, isAbsolute } from "node:path";
 import type { BraidManifest, ArtifactConfig } from "../../manifest/types.js";
 
 export type OwnershipResult = {
@@ -25,9 +26,23 @@ export function resolveArtifactPath(
   // Family artifact
   if (!art.directory) return null;
   if (subFile) {
+    if (!isSafeSubFile(subFile)) return null;
     return `${art.directory}/${subFile}`;
   }
   return art.index ? `${art.directory}/${art.index}` : null;
+}
+
+/**
+ * Validate that a sub-file name is safe: no path traversal, no absolute paths,
+ * must be a plain filename (optionally with a single subdirectory).
+ */
+export function isSafeSubFile(subFile: string): boolean {
+  if (!subFile || isAbsolute(subFile)) return false;
+  const normalized = normalize(subFile);
+  if (normalized.startsWith("..") || normalized.includes("/../") || normalized === "..") return false;
+  // After normalization, the path should not escape upward
+  if (normalized.split("/").some((seg) => seg === "..")) return false;
+  return true;
 }
 
 /**
@@ -60,6 +75,11 @@ export function checkOwnership(
       allowed: false,
       reason: `Role "${callingRole}" does not own "${artifactName}" for "${woType}" work orders. Owner: "${canonicalOwner}"`,
     };
+  }
+
+  // Validate sub-file path safety before any authorization check
+  if (subFile && !isSafeSubFile(subFile)) {
+    return { allowed: false, reason: `Unsafe sub-file path: "${subFile}"` };
   }
 
   // Writing a sub-file in a family artifact

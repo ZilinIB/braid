@@ -6,6 +6,11 @@ export type ChannelBindingInput = {
   peer?: { kind: string; id: string };
 };
 
+export type GenerateConfigOptions = {
+  manifestPath?: string;
+  orgBaseDir?: string;
+};
+
 type AgentEntry = {
   id: string;
   name: string;
@@ -91,6 +96,7 @@ function buildAgentEntry(
 export function generateOpenClawConfig(
   manifest: BraidManifest,
   channelBinding: ChannelBindingInput,
+  options?: GenerateConfigOptions,
 ): OpenClawConfigOutput {
   const workspacesDir = manifest.generation.targets.openclaw.output_workspaces_dir;
   const userFacingRole = manifest.generation.targets.openclaw.user_binding_role;
@@ -124,7 +130,8 @@ export function generateOpenClawConfig(
         "braid-workflow": {
           enabled: true,
           config: {
-            manifestPath: "manifests/software-product-company.yaml",
+            manifestPath: options?.manifestPath ?? "manifests/software-product-company.yaml",
+            ...(options?.orgBaseDir && { orgBaseDir: options.orgBaseDir }),
           },
         },
       },

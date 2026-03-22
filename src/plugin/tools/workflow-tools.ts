@@ -183,16 +183,20 @@ export async function woTransition(
     status.blocked_by = [];
   }
 
+  // Pre-check artifact existence on disk
+  const artifactExistsCache = new Map<string, boolean>();
+  const filesToCheck = ["request.md", "brief.md", "plan.md", "delivery/index.md", "review/index.md"];
+  for (const file of filesToCheck) {
+    artifactExistsCache.set(file, await ctx.woStore.artifactExists(args.wo_id, file));
+  }
+
   const result = checkTransition(
     ctx.manifest,
     status,
     args.to,
     ctx.callingRole,
-    (name: string) => {
-      // Synchronous check — use artifacts map from status
-      // This is a simplification; in production we'd check the file system
-      return true; // Trust the protocol flow
-    },
+    (name: string) => artifactExistsCache.get(name) ?? false,
+    { reason: args.reason },
   );
 
   if (!result.allowed) {

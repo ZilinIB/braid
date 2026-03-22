@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile, readdir, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve, relative } from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
 export type WorkOrderStatus = {
@@ -67,14 +67,25 @@ export class WorkOrderStore {
     await writeFile(path, stringifyYaml(status), "utf-8");
   }
 
+  private assertWithinBoundary(woId: string, fullPath: string): void {
+    const woDir = resolve(this.woDir(woId));
+    const resolved = resolve(fullPath);
+    const rel = relative(woDir, resolved);
+    if (rel.startsWith("..") || resolve(woDir, rel) !== resolved) {
+      throw new Error(`Path escapes work order boundary: "${fullPath}"`);
+    }
+  }
+
   async writeArtifact(woId: string, relativePath: string, content: string): Promise<void> {
     const fullPath = join(this.woDir(woId), relativePath);
+    this.assertWithinBoundary(woId, fullPath);
     await mkdir(join(fullPath, ".."), { recursive: true });
     await writeFile(fullPath, content, "utf-8");
   }
 
   async readArtifact(woId: string, relativePath: string): Promise<string> {
     const fullPath = join(this.woDir(woId), relativePath);
+    this.assertWithinBoundary(woId, fullPath);
     return readFile(fullPath, "utf-8");
   }
 

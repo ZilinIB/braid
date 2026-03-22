@@ -6,12 +6,17 @@ export type TransitionResult = {
   reason: string;
 };
 
+export type TransitionContext = {
+  reason?: string;
+};
+
 export function checkTransition(
   manifest: BraidManifest,
   status: WorkOrderStatus,
   toState: string,
   requestingRole: string,
   artifactExists: (name: string) => boolean,
+  ctx?: TransitionContext,
 ): TransitionResult {
   const { transitions, states } = manifest.protocol;
 
@@ -46,14 +51,14 @@ export function checkTransition(
 
   // Check required conditions
   for (const transition of authorized) {
-    const unmet = checkRequires(transition.requires, status, woType, artifactExists);
+    const unmet = checkRequires(transition.requires, status, woType, artifactExists, ctx);
     if (unmet.length === 0) {
       return { allowed: true, reason: "ok" };
     }
   }
 
   // All matching transitions had unmet conditions — report from the first one
-  const unmet = checkRequires(authorized[0]!.requires, status, woType, artifactExists);
+  const unmet = checkRequires(authorized[0]!.requires, status, woType, artifactExists, ctx);
   return { allowed: false, reason: `Unmet conditions: ${unmet.join(", ")}` };
 }
 
@@ -62,6 +67,7 @@ function checkRequires(
   status: WorkOrderStatus,
   woType: { review_policy: string },
   artifactExists: (name: string) => boolean,
+  ctx?: TransitionContext,
 ): string[] {
   const unmet: string[] = [];
   for (const req of requires) {
@@ -82,7 +88,6 @@ function checkRequires(
         if (!artifactExists("review/index.md")) unmet.push("review/index.md must exist");
         break;
       case "executable_scope":
-        // Plan exists implies executable scope
         if (!artifactExists("plan.md")) unmet.push("plan.md must exist for executable scope");
         break;
       case "review_policy_requires_review_or_expedited":
@@ -96,11 +101,10 @@ function checkRequires(
         }
         break;
       case "passing_review":
-        // This would be checked by reading review/index.md contents
-        // For now, trust that review/index.md existing implies it was written with a verdict
+        if (!artifactExists("review/index.md")) unmet.push("review/index.md must exist");
         break;
       case "rework_required":
-        // Same — trust qa_guard's judgment
+        if (!artifactExists("review/index.md")) unmet.push("review/index.md must exist");
         break;
       case "blocker_recorded":
         if (status.blocked_by.length === 0) unmet.push("blocker must be recorded");
@@ -109,13 +113,12 @@ function checkRequires(
         if (status.blocked_by.length > 0) unmet.push("blockers must be cleared");
         break;
       case "final_summary_ready":
-        // Trust chief_of_staff to have prepared the summary
+        if (!ctx?.reason) unmet.push("final summary reason must be provided");
         break;
       case "cancellation_reason":
-        // Will be provided as part of the transition
+        if (!ctx?.reason) unmet.push("cancellation reason must be provided");
         break;
       default:
-        // Unknown conditions are treated as unmet
         unmet.push(`unknown condition: ${req}`);
     }
   }

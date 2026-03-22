@@ -131,6 +131,7 @@ describe("workflow integration", () => {
     const doneResult = await runtime.callTool("chief_of_staff", "wo_transition", {
       wo_id: woId,
       to: "done",
+      reason: "Dashboard delivered and approved",
     });
     expect(doneResult).toContain("done");
 
