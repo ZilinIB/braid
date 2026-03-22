@@ -1,0 +1,27 @@
+id: WO-2026-03-22-001
+title: Launch landing page refresh
+type: build
+state: done
+priority: high
+owner: chief_of_staff
+lane_owner: tech_lead
+review_policy: required
+severity: normal
+needs_human_attention: false
+opened_at: 2026-03-22T10:00:00Z
+updated_at: 2026-03-22T16:45:00Z
+current_lane: closed
+current_role: chief_of_staff
+approved: true
+blocked_by: []
+baton_history:
+  - from: product_lead
+    to: tech_lead
+    reason: implementation_required
+artifacts:
+  request: request.md
+  brief: brief.md
+  plan: plan.md
+  spec: spec/index.md
+  delivery: delivery/index.md
+  review: review/index.md

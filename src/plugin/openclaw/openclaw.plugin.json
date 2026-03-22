@@ -1,0 +1,19 @@
+{
+  "id": "braid-workflow",
+  "name": "Braid Workflow",
+  "description": "Lane-based work-order protocol, artifact ownership, and reporting for Braid organizations",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "manifestPath": {
+        "type": "string",
+        "description": "Path to the Braid manifest YAML file"
+      },
+      "orgBaseDir": {
+        "type": "string",
+        "description": "Base directory for work orders and reports (defaults to ~/.openclaw/braid)"
+      }
+    },
+    "required": ["manifestPath"]
+  }
+}

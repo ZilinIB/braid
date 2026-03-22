@@ -1,0 +1,610 @@
+version: 1
+
+org:
+  id: braid-default
+  name: Braid Default Company
+  kind: software_product_company
+  description: >
+    A lean software product company pack for OpenClaw with lane-based execution,
+    spawn-first delegation, controlled baton transfers, a work-order ledger,
+    urgent escalation rules, and daily executive reporting.
+
+runtime:
+  substrate: openclaw
+  execution:
+    delegation: spawn_first
+    cross_agent_send: restricted
+    lane_changes_via: chief_of_staff
+    dispatch_role: chief_of_staff
+    persistent_roles:
+      - chief_of_staff
+    spawned_roles:
+      - product_lead
+      - tech_lead
+      - growth_hacker
+      - research_analyst
+      - design_lead
+      - frontend_engineer
+      - backend_engineer
+      - platform_engineer
+      - qa_guard
+    max_spawn_depth: 2
+    review_role: qa_guard
+  memory:
+    shared_source_of_truth: work_order_ledger
+    role_memory: workspace
+    reporting_store: daily_reports
+    transcript_authority: non_canonical
+
+roles:
+  chief_of_staff:
+    display_name: Chief of Staff
+    model: openai/gpt-5.4
+    mission: Own intake, routing, final summaries, escalation visibility, and executive reporting.
+    user_facing: true
+    session_mode: persistent
+    authority: human_facing
+    owns:
+      artifacts:
+        - request
+      responsibilities:
+        - intake
+        - work_order_open_close
+        - cross_lane_routing
+        - escalation_visibility
+        - final_response
+        - daily_exec_summary
+    can_spawn:
+      - product_lead
+      - tech_lead
+      - growth_hacker
+      - research_analyst
+      - qa_guard
+    must_not:
+      - deep_domain_execution_except_trivial
+      - bypass_canonical_artifacts
+
+  product_lead:
+    display_name: Product Lead
+    model: openai/gpt-5.4
+    mission: Own scope, priorities, constraints, and success criteria.
+    user_facing: false
+    session_mode: spawned
+    authority: scope
+    owns:
+      artifacts:
+        - brief
+        - plan
+        - spec
+        - delivery
+      responsibilities:
+        - problem_framing
+        - priorities
+        - success_criteria
+        - research_lane_ownership
+    can_author:
+      families:
+        - spec
+        - delivery
+    can_spawn:
+      - research_analyst
+      - design_lead
+      - qa_guard
+    must_not:
+      - delegate_directly_to_engineers
+      - redefine_architecture
+      - answer_user_directly
+      - bypass_baton_transfer_protocol
+
+  tech_lead:
+    display_name: Tech Lead
+    model: openai/gpt-5.4
+    mission: Own technical planning, sequencing, integration, and execution coordination.
+    user_facing: false
+    session_mode: spawned
+    authority: technical
+    owns:
+      artifacts:
+        - plan
+        - spec
+        - delivery
+      responsibilities:
+        - technical_planning
+        - integration
+        - execution_coordination
+        - build_lane_ownership
+        - ops_lane_ownership
+    can_author:
+      families:
+        - spec
+        - delivery
+    can_spawn:
+      - research_analyst
+      - design_lead
+      - frontend_engineer
+      - backend_engineer
+      - platform_engineer
+      - qa_guard
+    must_not:
+      - redefine_product_scope
+      - answer_user_directly
+
+  growth_hacker:
+    display_name: Growth Hacker
+    model: openai/gpt-5.4
+    mission: Own distribution, SEO, social execution, experiments, and launch planning.
+    user_facing: false
+    session_mode: spawned
+    authority: distribution
+    owns:
+      artifacts:
+        - brief
+        - plan
+        - spec
+        - delivery
+      responsibilities:
+        - seo
+        - social_platforms
+        - audience_growth
+        - launch_planning
+        - acquisition_experiments
+        - growth_lane_ownership
+    can_author:
+      families:
+        - spec
+        - delivery
+    can_spawn:
+      - research_analyst
+      - design_lead
+      - qa_guard
+    must_not:
+      - delegate_directly_to_engineers
+      - redefine_product_or_technical_scope
+      - answer_user_directly
+      - bypass_baton_transfer_protocol
+
+  research_analyst:
+    display_name: Research Analyst
+    model: openai/gpt-5.4
+    mission: Gather evidence for market, user, technical, competitive, and topical questions.
+    user_facing: false
+    session_mode: spawned
+    authority: execution
+    owns:
+      artifacts: []
+      responsibilities:
+        - market_research
+        - user_research
+        - technical_research
+        - seo_topic_research
+    can_author:
+      families:
+        - delivery
+        - spec
+    can_spawn: []
+    must_not:
+      - make_final_strategy_decisions
+      - write_canonical_summaries
+
+  design_lead:
+    display_name: Design Lead
+    model: openai/gpt-5.4
+    mission: Execute UX, UI, and communication design within the active lane.
+    user_facing: false
+    session_mode: spawned
+    authority: execution
+    owns:
+      artifacts: []
+      responsibilities:
+        - ux_execution
+        - ui_execution
+        - communication_design
+    can_author:
+      families:
+        - delivery
+        - spec
+    can_spawn: []
+    must_not:
+      - own_scope
+      - own_technical_architecture
+      - answer_user_directly
+      - write_canonical_summaries
+
+  frontend_engineer:
+    display_name: Frontend Engineer
+    model: openai/gpt-5.4
+    mission: Implement client-side interfaces and frontend behavior.
+    user_facing: false
+    session_mode: spawned
+    authority: execution
+    owns:
+      artifacts: []
+      responsibilities:
+        - frontend_implementation
+    can_author:
+      families:
+        - delivery
+    can_spawn: []
+    must_not:
+      - redefine_requirements
+      - bypass_review
+
+  backend_engineer:
+    display_name: Backend Engineer
+    model: openai/gpt-5.4
+    mission: Implement APIs, data models, integrations, and server-side behavior.
+    user_facing: false
+    session_mode: spawned
+    authority: execution
+    owns:
+      artifacts: []
+      responsibilities:
+        - backend_implementation
+    can_author:
+      families:
+        - delivery
+    can_spawn: []
+    must_not:
+      - redefine_requirements
+      - bypass_review
+
+  platform_engineer:
+    display_name: Platform Engineer
+    model: openai/gpt-5.4
+    mission: Own deployment, reliability, CI/CD, and operational execution.
+    user_facing: false
+    session_mode: spawned
+    authority: execution
+    owns:
+      artifacts: []
+      responsibilities:
+        - deployment
+        - reliability
+        - observability
+        - ci_cd
+    can_author:
+      families:
+        - delivery
+    can_spawn: []
+    must_not:
+      - redefine_feature_behavior
+      - bypass_review
+
+  qa_guard:
+    display_name: QA Guard
+    model: openai/gpt-5.4
+    mission: Own evidence-based validation, quality gates, release readiness, and critical findings.
+    user_facing: false
+    session_mode: spawned
+    authority: quality
+    owns:
+      artifacts:
+        - review
+      responsibilities:
+        - quality_review
+        - security_review
+        - release_readiness
+        - critical_findings
+    can_author:
+      families:
+        - review
+    can_spawn: []
+    must_not:
+      - silently_fix_work
+      - redefine_scope
+      - bypass_lane_owner
+
+graph:
+  default_mechanism: sessions_spawn
+  lane_change_route: chief_of_staff
+  allowed_spawn_edges:
+    chief_of_staff:
+      - product_lead
+      - tech_lead
+      - growth_hacker
+      - research_analyst
+      - qa_guard
+    product_lead:
+      - research_analyst
+      - design_lead
+      - qa_guard
+    tech_lead:
+      - research_analyst
+      - design_lead
+      - frontend_engineer
+      - backend_engineer
+      - platform_engineer
+      - qa_guard
+    growth_hacker:
+      - research_analyst
+      - design_lead
+      - qa_guard
+    research_analyst: []
+    design_lead: []
+    frontend_engineer: []
+    backend_engineer: []
+    platform_engineer: []
+    qa_guard: []
+  allowed_baton_transfers:
+    - from: product_lead
+      to: tech_lead
+      work_order_types:
+        - build
+      when: implementation_required
+    - from: growth_hacker
+      to: tech_lead
+      work_order_types:
+        - growth
+      when: implementation_required
+  forbidden_edges:
+    - user_to_any_role_except_chief_of_staff
+    - worker_to_worker
+    - reviewer_to_implementer_direct_loop
+    - growth_hacker_to_engineers
+    - product_lead_to_engineers
+    - orchestrator_to_orchestrator_peer_handoff_outside_approved_baton_transfer
+    - cross_agent_sessions_send_as_default
+
+protocol:
+  work_orders:
+    id_pattern: WO-YYYY-MM-DD-###
+    directory: org/work-orders
+    types:
+      build:
+        brief_owner: product_lead
+        lane_owner: tech_lead
+        plan_owner: tech_lead
+        spec_owner: tech_lead
+        delivery_owner: tech_lead
+        review_owner: qa_guard
+        review_policy: required
+      research:
+        brief_owner: product_lead
+        lane_owner: product_lead
+        plan_owner: product_lead
+        spec_owner: product_lead
+        delivery_owner: product_lead
+        review_owner: qa_guard
+        review_policy: optional
+      growth:
+        brief_owner: growth_hacker
+        lane_owner: growth_hacker
+        plan_owner: growth_hacker
+        spec_owner: growth_hacker
+        delivery_owner: growth_hacker
+        review_owner: qa_guard
+        review_policy: required
+      ops:
+        brief_owner: tech_lead
+        lane_owner: tech_lead
+        plan_owner: tech_lead
+        spec_owner: tech_lead
+        delivery_owner: tech_lead
+        review_owner: qa_guard
+        review_policy: required
+        modes:
+          - planned_change
+          - incident
+          - maintenance
+        mode_overrides:
+          incident:
+            review_policy: expedited
+            default_severity: high
+  artifacts:
+    request:
+      kind: file
+      file: request.md
+      purpose: Raw request and initial framing from Chief of Staff
+      owner_mode: fixed
+      default_owner: chief_of_staff
+    brief:
+      kind: file
+      file: brief.md
+      purpose: Problem framing, scope, constraints, and success criteria
+      owner_mode: by_work_order_type
+      owners_by_type:
+        build: product_lead
+        research: product_lead
+        growth: growth_hacker
+        ops: tech_lead
+    plan:
+      kind: file
+      file: plan.md
+      purpose: Ordered execution plan, routing, and dependencies
+      owner_mode: by_work_order_type
+      owners_by_type:
+        build: tech_lead
+        research: product_lead
+        growth: growth_hacker
+        ops: tech_lead
+    spec:
+      kind: family
+      directory: spec
+      index: index.md
+      purpose: Canonical implementation, research, or campaign specification plus optional sub-specs
+      owner_mode: by_work_order_type
+      owners_by_type:
+        build: tech_lead
+        research: product_lead
+        growth: growth_hacker
+        ops: tech_lead
+      contributor_mode: delegated_roles
+    delivery:
+      kind: family
+      directory: delivery
+      index: index.md
+      purpose: Canonical delivery summary plus scoped execution outputs
+      owner_mode: by_work_order_type
+      owners_by_type:
+        build: tech_lead
+        research: product_lead
+        growth: growth_hacker
+        ops: tech_lead
+      contributor_mode: delegated_roles
+    review:
+      kind: family
+      directory: review
+      index: index.md
+      purpose: Quality verdict, findings, evidence, and optional review slices
+      owner_mode: fixed
+      default_owner: qa_guard
+      contributor_mode: qa_guard_delegated_only
+    status:
+      kind: file
+      file: status.yaml
+      purpose: Machine-readable work-order state
+      owner_mode: system
+  states:
+    - opened
+    - briefed
+    - planned
+    - in_execution
+    - in_review
+    - approved
+    - done
+    - blocked
+    - cancelled
+  transitions:
+    - from: [none]
+      to: opened
+      requested_by:
+        - chief_of_staff
+      requires:
+        - request
+    - from: [opened]
+      to: briefed
+      requested_by:
+        - product_lead
+        - growth_hacker
+        - tech_lead
+      requires:
+        - brief
+    - from: [briefed]
+      to: planned
+      requested_by:
+        - product_lead
+        - growth_hacker
+        - tech_lead
+      requires:
+        - plan
+    - from: [planned]
+      to: in_execution
+      requested_by:
+        - product_lead
+        - growth_hacker
+        - tech_lead
+      requires:
+        - executable_scope
+    - from: [in_execution]
+      to: in_review
+      requested_by:
+        - product_lead
+        - growth_hacker
+        - tech_lead
+      requires:
+        - delivery
+        - review_policy_requires_review_or_expedited
+    - from: [in_execution]
+      to: approved
+      requested_by:
+        - product_lead
+        - growth_hacker
+        - tech_lead
+      requires:
+        - delivery
+        - review_policy_optional
+    - from: [in_review]
+      to: approved
+      requested_by:
+        - qa_guard
+      requires:
+        - review
+        - passing_review
+    - from: [in_review]
+      to: planned
+      requested_by:
+        - qa_guard
+      requires:
+        - review
+        - rework_required
+    - from: [opened, briefed, planned, in_execution, in_review, approved]
+      to: blocked
+      requested_by:
+        - chief_of_staff
+        - product_lead
+        - growth_hacker
+        - tech_lead
+      requires:
+        - blocker_recorded
+    - from: [blocked]
+      to: planned
+      requested_by:
+        - product_lead
+        - growth_hacker
+        - tech_lead
+      requires:
+        - blocker_cleared
+    - from: [approved]
+      to: done
+      requested_by:
+        - chief_of_staff
+      requires:
+        - final_summary_ready
+    - from: [opened, briefed, planned, in_execution, in_review, approved, blocked]
+      to: cancelled
+      requested_by:
+        - chief_of_staff
+      requires:
+        - cancellation_reason
+  escalation:
+    severities:
+      - normal
+      - high
+      - critical
+    triggers:
+      - blocked_state
+      - critical_review_finding
+      - ops_incident
+      - needs_human_attention
+    notify_roles:
+      high:
+        - chief_of_staff
+      critical:
+        - chief_of_staff
+    human_notify_threshold: critical
+    notify_human_via: chief_of_staff
+
+reporting:
+  daily:
+    enabled: true
+    transport: cron
+    isolated_session: true
+    store: org/reports/daily
+    summary_role: chief_of_staff
+    summary_file: YYYY-MM-DD-summary.md
+    order:
+      - research_analyst
+      - design_lead
+      - frontend_engineer
+      - backend_engineer
+      - platform_engineer
+      - qa_guard
+      - product_lead
+      - tech_lead
+      - growth_hacker
+      - chief_of_staff
+    sections:
+      - completed
+      - in_progress
+      - blockers
+      - decisions
+      - next_actions
+      - metrics
+
+generation:
+  targets:
+    openclaw:
+      enabled: true
+      user_binding_role: chief_of_staff
+      output_config: generated/braid/openclaw.json
+      output_workspaces_dir: generated/braid/workspaces
