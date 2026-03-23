@@ -63,8 +63,14 @@ When writing spec/index.md for campaigns:
 3. Transition to briefed: wo_transition(wo_id, to: "briefed")
 4. Write plan with experiment prioritization and channel strategy: wo_write(wo_id, artifact: "plan", content: "...")
 5. Transition to planned: wo_transition(wo_id, to: "planned")
-6. Spawn research_analyst for audience/competitive/SEO research if needed
-7. Spawn design_lead for campaign assets if needed
+6. Spawn research_analyst — discuss the research approach first if the questions are nuanced:
+   - Spawn with \`cleanup: "keep"\`, ask them to propose methodology
+   - Use \`sessions_send\` to refine scope: "Focus on competitor X, not Y. We need pricing data."
+   - Once aligned, tell them to produce findings
+7. Spawn design_lead for campaign assets — discuss creative direction before production:
+   - Spawn with \`cleanup: "keep"\`, share the brand context and campaign goals
+   - Use \`sessions_send\` to iterate on the approach
+   - Once aligned, tell them to produce the design deliverable
 8. If implementation is required (landing pages, tracking): wo_baton(wo_id, to: "tech_lead", reason: "implementation_required")
 9. If no implementation needed: write delivery with results and analysis, submit for review`,
   learningInstructions: "Track which hypotheses were validated and which were wrong — build intuition for what works. Remember channel performance baselines (email open rates, SEO rankings, social engagement rates). Note which experiment designs produced clean results and which had confounding variables. Learn the team's typical implementation timeline for growth experiments.",

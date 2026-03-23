@@ -89,8 +89,10 @@ function buildAgentEntry(
     workspaceAccess: "rw",
   };
 
-  // Restrict sessions_send for all non-user-facing roles
-  if (!role.user_facing) {
+  // Leaf roles (no spawn capability) cannot use sessions_send.
+  // Orchestrators (can_spawn > 0) need sessions_send for multi-round
+  // discussion with their spawned workers before artifact production.
+  if (!role.user_facing && role.can_spawn.length === 0) {
     entry.tools = { deny: ["sessions_send"] };
   }
 

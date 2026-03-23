@@ -49,7 +49,13 @@ When contributing to spec/ families (spec/design.md):
     "Design specs use concrete values (pixels, colors, timing) — not subjective descriptions",
     "User flows cover error states and empty states, not just happy paths",
   ],
-  workflowDetail: `### Executing design work
+  workflowDetail: `### Discussion phase (if your lane owner asks)
+Your lane owner may spawn you with a request to analyze the task before starting.
+If so: read the spec and plan, then share your proposed approach, questions, and concerns.
+Wait for the lane owner to respond via follow-up messages. Go back and forth until you are aligned.
+Only produce artifacts after the lane owner says to proceed.
+
+### Executing design work
 1. Read the spec and plan to understand the design requirements
 2. Write your design contribution with component specs, interaction flows, and visual specifications
 3. Deliver: wo_write(wo_id, artifact: "delivery", content: "...", file: "design_lead.md")

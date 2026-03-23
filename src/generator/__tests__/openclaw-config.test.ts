@@ -60,16 +60,18 @@ describe("generateOpenClawConfig", () => {
     expect(fe?.subagents).toBeUndefined();
   });
 
-  it("non-user-facing roles deny sessions_send", async () => {
+  it("leaf roles deny sessions_send", async () => {
+    const manifest = await loadManifest();
+    const config = generateOpenClawConfig(manifest, defaultBinding);
+    const fe = config.agents.list.find((a) => a.id === "frontend_engineer");
+    expect(fe?.tools?.deny).toContain("sessions_send");
+  });
+
+  it("orchestrator roles do not deny sessions_send", async () => {
     const manifest = await loadManifest();
     const config = generateOpenClawConfig(manifest, defaultBinding);
     const techLead = config.agents.list.find((a) => a.id === "tech_lead");
-    expect(techLead?.tools?.deny).toContain("sessions_send");
-  });
-
-  it("chief_of_staff does not deny sessions_send", async () => {
-    const manifest = await loadManifest();
-    const config = generateOpenClawConfig(manifest, defaultBinding);
+    expect(techLead?.tools?.deny).toBeUndefined();
     const cos = config.agents.list.find((a) => a.id === "chief_of_staff");
     expect(cos?.tools?.deny).toBeUndefined();
   });

@@ -47,7 +47,13 @@ export const backendEngineer: PersonaTemplate = {
     "Input validation covers all user-provided data",
     "Delivery references specific files, endpoints, and migration steps",
   ],
-  workflowDetail: `### Executing backend work
+  workflowDetail: `### Discussion phase (if your lane owner asks)
+Your lane owner may spawn you with a request to analyze the task before starting.
+If so: read the spec and plan, then share your proposed approach, questions, and concerns.
+Wait for the lane owner to respond via follow-up messages. Go back and forth until you are aligned.
+Only produce artifacts after the lane owner says to proceed.
+
+### Executing backend work
 1. Read the spec for API design, data model, and interface contracts: wo_read(wo_id, artifact: "spec")
 2. Read the plan for dependencies — does frontend depend on your API shape?
 3. Implement APIs, data models, and integrations per the spec

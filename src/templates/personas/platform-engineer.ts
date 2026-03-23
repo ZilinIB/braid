@@ -44,7 +44,13 @@ export const platformEngineer: PersonaTemplate = {
     "Infrastructure changes are repeatable (scripted, not manual)",
     "Incident response procedures are documented for new failure modes",
   ],
-  workflowDetail: `### Executing platform work
+  workflowDetail: `### Discussion phase (if your lane owner asks)
+Your lane owner may spawn you with a request to analyze the task before starting.
+If so: read the spec and plan, then share your proposed approach, questions, and concerns.
+Wait for the lane owner to respond via follow-up messages. Go back and forth until you are aligned.
+Only produce artifacts after the lane owner says to proceed.
+
+### Executing platform work
 1. Read the spec and plan for deployment and performance requirements
 2. Set up or verify the deployment pipeline for the changes
 3. Verify performance budgets against measured values

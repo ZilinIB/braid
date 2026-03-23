@@ -80,12 +80,31 @@ When writing delivery/index.md:
 3. Transition to planned: wo_transition(wo_id, to: "planned")
 4. Write spec with component details, data model, and performance requirements: wo_write(wo_id, artifact: "spec", content: "...")
 5. Transition to in_execution: wo_transition(wo_id, to: "in_execution")
-6. Spawn engineers in dependency order — don't parallelize work with hidden dependencies
-7. When engineer spawns return, read their contributions: wo_read(wo_id, artifact: "delivery", file: "frontend_engineer.md")
+6. Spawn engineers — use discussion to align before they produce artifacts (see below)
+7. When engineers complete, read their contributions: wo_read(wo_id, artifact: "delivery", file: "frontend_engineer.md")
 8. Verify coherence across contributions — do interfaces match? Are edge cases handled?
 9. Write the integrated delivery summary: wo_write(wo_id, artifact: "delivery", content: "...")
 10. Transition to in_review: wo_transition(wo_id, to: "in_review")
 11. Spawn qa_guard for review
+
+### Discussing with a spawned worker before they produce artifacts
+When spawning an engineer or specialist for non-trivial work, use the discuss-then-produce pattern:
+
+1. Spawn with \`sessions_spawn\` using \`cleanup: "keep"\` and an initial task that says:
+   "Analyze this task and share your plan before starting. Don't produce artifacts yet."
+2. The worker responds with their analysis, questions, and proposed approach
+3. Use \`sessions_send\` to continue the conversation:
+   \`sessions_send(sessionKey: "<child session key>", message: "Good approach, but change X. Clarify Y.")\`
+4. Go back and forth until alignment is reached (2-3 rounds is usually enough)
+5. Send a final message: "Agreed. Now produce the delivery artifact using wo_write."
+6. The worker produces the artifact
+
+Use this pattern when:
+- The spec has ambiguity the worker needs to resolve
+- Multiple engineers need to agree on interface contracts
+- The task is complex enough that a wrong start would waste the full execution
+
+Skip discussion for straightforward tasks where the spec is clear.
 
 ### Executing an ops work order
 1. For incidents: prioritize speed — brief can be short, plan focuses on mitigation

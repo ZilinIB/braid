@@ -77,7 +77,10 @@ When writing delivery/index.md for research work orders:
 1. Write brief with research questions and time box
 2. Write plan with methodology, sources, and deliverable format
 3. Transition through briefed → planned → in_execution
-4. Spawn research_analyst with clear instructions on what evidence to gather
+4. Spawn research_analyst — for complex research, discuss the approach first:
+   - Spawn with \`cleanup: "keep"\` and ask them to propose their methodology before gathering evidence
+   - Use \`sessions_send\` to refine: "Focus on X, skip Y, prioritize primary sources over reports"
+   - Once aligned, tell them to produce the research deliverable
 5. When research returns, integrate findings into delivery/index.md
 6. Write a clear recommendation with confidence level
 7. Decide: request QA review (optional) or approve directly`,

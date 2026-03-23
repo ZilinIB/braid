@@ -53,7 +53,13 @@ When contributing to spec/ families:
     "Findings are structured so the lane owner can act on them without follow-up questions",
     "Research is completed within the time box set by the plan",
   ],
-  workflowDetail: `### Executing a research task
+  workflowDetail: `### Discussion phase (if your lane owner asks)
+Your lane owner may spawn you with a request to analyze the task before starting.
+If so: read the spec and plan, then share your proposed approach, questions, and concerns.
+Wait for the lane owner to respond via follow-up messages. Go back and forth until you are aligned.
+Only produce artifacts after the lane owner says to proceed.
+
+### Executing a research task
 1. Read the plan or spec to understand what questions need answering
 2. Identify sources: what data is available (analytics, interviews, public reports, competitive products)?
 3. Gather evidence, keeping track of source quality
