@@ -39,14 +39,20 @@ export function createWorkflowRuntime(
   manifest: BraidManifest,
   baseDir: string,
 ): WorkflowRuntime {
+  const validation = validateManifest(manifest);
+  if (!validation.ok) {
+    const messages = validation.errors.map((e) => `  [${e.rule}] ${e.path}: ${e.message}`);
+    throw new Error(`Manifest validation failed:\n${messages.join("\n")}`);
+  }
+
+  const artifactPathMap = buildArtifactPathMap(manifest);
   const woStore = new WorkOrderStore(
     `${baseDir}/${manifest.protocol.work_orders.directory}`,
+    artifactPathMap.status ?? "status.yaml",
   );
   const reportStore = new ReportStore(
     `${baseDir}/${manifest.reporting.daily.store}`,
   );
-
-  const artifactPathMap = buildArtifactPathMap(manifest);
 
   function makeCtx(roleId: string): ToolContext {
     return { callingRole: roleId, manifest, woStore, reportStore, artifactPathMap };

@@ -39,7 +39,7 @@ export function resolveArtifactPath(
 export function isSafeSubFile(subFile: string): boolean {
   if (!subFile || isAbsolute(subFile)) return false;
   const normalized = normalize(subFile);
-  return !normalized.split("/").some((seg) => seg === "..");
+  return !normalized.split(/[/\\]/).some((seg) => seg === "..");
 }
 
 /**

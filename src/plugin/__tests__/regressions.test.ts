@@ -219,6 +219,40 @@ describe("executive summary readback", () => {
     runtime = createWorkflowRuntime(manifest, tmpDir);
   });
 
+  it("honors custom status.file for read and write paths", async () => {
+    const manifest = await loadManifest();
+    manifest.protocol.artifacts.status.file = "meta/state.yaml";
+    runtime = createWorkflowRuntime(manifest, tmpDir);
+
+    const openResult = await runtime.callTool("chief_of_staff", "wo_open", {
+      title: "Status path test",
+      type: "build",
+      request_content: "test",
+    });
+    const woId = openResult.match(/WO-\d{4}-\d{2}-\d{2}-\d{3}/)![0];
+
+    const status = JSON.parse(await runtime.callTool("chief_of_staff", "wo_status", { wo_id: woId }));
+    expect(status.artifacts.status).toBe("meta/state.yaml");
+
+    const statusArtifact = await runtime.callTool("chief_of_staff", "wo_read", {
+      wo_id: woId,
+      artifact: "status",
+    });
+    expect(statusArtifact).toContain("state: opened");
+
+    const onDisk = await readFile(
+      join(tmpDir, manifest.protocol.work_orders.directory, woId, "meta/state.yaml"),
+      "utf-8",
+    );
+    expect(onDisk).toContain("state: opened");
+  });
+
+  it("rejects invalid manifests before runtime creation", async () => {
+    const manifest = await loadManifest();
+    manifest.protocol.artifacts.request.file = "../escape.md";
+    expect(() => createWorkflowRuntime(manifest, tmpDir)).toThrow(/artifactPathsSafe/);
+  });
+
   it("summary is readable after writing", async () => {
     await runtime.callTool("tech_lead", "report_write", {
       content: "## Completed\n\n- Built APIs",

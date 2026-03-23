@@ -179,4 +179,41 @@ describe("generateWorkspaceFiles", () => {
       expect(files1[i]!.content).toBe(files2[i]!.content);
     }
   });
+
+  it("AGENTS.md reflects custom artifact paths in persona guidance", async () => {
+    const manifest = await loadManifest();
+    manifest.protocol.artifacts.brief.file = "scope.md";
+    manifest.protocol.artifacts.plan.file = "roadmap.md";
+    manifest.protocol.artifacts.spec.directory = "blueprints";
+    manifest.protocol.artifacts.spec.index = "overview.md";
+    manifest.protocol.artifacts.delivery.directory = "ship";
+    manifest.protocol.artifacts.delivery.index = "summary.md";
+    manifest.protocol.artifacts.review.directory = "audit";
+    manifest.protocol.artifacts.review.index = "decision.md";
+
+    const techLeadAgents = generateWorkspaceFiles(manifest, "tech_lead")
+      .find((f) => f.relativePath === "AGENTS.md")!;
+    expect(techLeadAgents.content).toContain("scope.md");
+    expect(techLeadAgents.content).toContain("roadmap.md");
+    expect(techLeadAgents.content).toContain("ship/summary.md");
+    expect(techLeadAgents.content).toContain("ship/frontend_engineer.md");
+    expect(techLeadAgents.content).toContain("blueprints/overview.md");
+    expect(techLeadAgents.content).not.toContain("brief.md");
+    expect(techLeadAgents.content).not.toContain("plan.md");
+    expect(techLeadAgents.content).not.toContain("delivery/index.md");
+    expect(techLeadAgents.content).not.toContain("delivery/frontend_engineer.md");
+    expect(techLeadAgents.content).not.toContain("Delivery/index.md");
+
+    const designLeadAgents = generateWorkspaceFiles(manifest, "design_lead")
+      .find((f) => f.relativePath === "AGENTS.md")!;
+    expect(designLeadAgents.content).toContain("blueprints/design.md");
+    expect(designLeadAgents.content).not.toContain("spec/design.md");
+
+    const qaGuardAgents = generateWorkspaceFiles(manifest, "qa_guard")
+      .find((f) => f.relativePath === "AGENTS.md")!;
+    expect(qaGuardAgents.content).toContain("audit/decision.md");
+    expect(qaGuardAgents.content).toContain("audit/security.md");
+    expect(qaGuardAgents.content).not.toContain("review/index.md");
+    expect(qaGuardAgents.content).not.toContain("review/security.md");
+  });
 });

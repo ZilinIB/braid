@@ -100,6 +100,20 @@ describe("validateManifest", () => {
     expect(result.errors.some((e) => e.rule === "artifactOwnerCoherence")).toBe(true);
   });
 
+  it("artifactOwnerCoherence: catches missing owners_by_type entry for a work order type", () => {
+    const m = clone(manifest);
+    delete m.protocol.artifacts.brief.owners_by_type?.research;
+    const result = validateManifest(m);
+    expect(result.ok).toBe(false);
+    expect(
+      result.errors.some(
+        (e) =>
+          e.rule === "artifactOwnerCoherence"
+          && e.message.includes('missing an owner for work order type "research"'),
+      ),
+    ).toBe(true);
+  });
+
   it("singleUserFacingRole: catches no user-facing role", () => {
     manifest.roles.chief_of_staff!.user_facing = false;
     const result = validateManifest(manifest);
@@ -168,5 +182,33 @@ describe("validateManifest", () => {
     const result = validateManifest(manifest);
     expect(result.ok).toBe(false);
     expect(result.errors.some((e) => e.rule === "graphRolesComplete" && e.message.includes("qa_guard"))).toBe(true);
+  });
+
+  it("modeOverridesCoherent: catches undeclared mode override", () => {
+    const m = clone(manifest);
+    m.protocol.work_orders.types.ops.mode_overrides!.hotfix = { review_policy: "optional" };
+    const result = validateManifest(m);
+    expect(result.ok).toBe(false);
+    expect(
+      result.errors.some(
+        (e) =>
+          e.rule === "modeOverridesCoherent"
+          && e.path.endsWith(".mode_overrides.hotfix"),
+      ),
+    ).toBe(true);
+  });
+
+  it("artifactPathsSafe: catches unsafe artifact file path", () => {
+    const m = clone(manifest);
+    m.protocol.artifacts.request.file = "../escape.md";
+    const result = validateManifest(m);
+    expect(result.ok).toBe(false);
+    expect(
+      result.errors.some(
+        (e) =>
+          e.rule === "artifactPathsSafe"
+          && e.path === "protocol.artifacts.request.file",
+      ),
+    ).toBe(true);
   });
 });

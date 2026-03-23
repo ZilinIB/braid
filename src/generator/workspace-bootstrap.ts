@@ -47,6 +47,40 @@ function laneOwnerTypes(manifest: BraidManifest, roleId: string): string[] {
     .map(([name]) => name);
 }
 
+function canonicalArtifactPath(manifest: BraidManifest, artifactName: string): string {
+  const art = manifest.protocol.artifacts[artifactName];
+  if (!art) return artifactName;
+  if (art.kind === "file") return art.file ?? artifactName;
+  if (art.directory && art.index) return `${art.directory}/${art.index}`;
+  return artifactName;
+}
+
+function familyArtifactDirectory(manifest: BraidManifest, artifactName: string): string {
+  const art = manifest.protocol.artifacts[artifactName];
+  if (!art || art.kind !== "family") return artifactName;
+  return art.directory ?? artifactName;
+}
+
+function applyArtifactPathSubstitutions(manifest: BraidManifest, text: string): string {
+  const replacements = [
+    ["Delivery/index.md", canonicalArtifactPath(manifest, "delivery")],
+    ["delivery/index.md", canonicalArtifactPath(manifest, "delivery")],
+    ["review/index.md", canonicalArtifactPath(manifest, "review")],
+    ["spec/index.md", canonicalArtifactPath(manifest, "spec")],
+    ["request.md", canonicalArtifactPath(manifest, "request")],
+    ["brief.md", canonicalArtifactPath(manifest, "brief")],
+    ["plan.md", canonicalArtifactPath(manifest, "plan")],
+    ["delivery/", `${familyArtifactDirectory(manifest, "delivery")}/`],
+    ["review/", `${familyArtifactDirectory(manifest, "review")}/`],
+    ["spec/", `${familyArtifactDirectory(manifest, "spec")}/`],
+  ] as const;
+
+  return replacements.reduce(
+    (result, [from, to]) => result.replaceAll(from, to),
+    text,
+  );
+}
+
 const PERSONA_STYLES: Record<string, string> = {
   human_facing: [
     "You are the single point of contact between the organization and the human.",
@@ -260,10 +294,12 @@ function generateToolInstructions(manifest: BraidManifest, roleId: string, role:
       );
     }
     if (isLane) {
+      const briefPath = canonicalArtifactPath(manifest, "brief");
+      const planPath = canonicalArtifactPath(manifest, "plan");
       lines.push(
         `As lane owner for ${laneTypes.join(", ")}:`,
-        '- `opened` → `briefed`: after writing brief.md',
-        '- `briefed` → `planned`: after writing plan.md',
+        `- \`opened\` → \`briefed\`: after writing ${briefPath}`,
+        `- \`briefed\` → \`planned\`: after writing ${planPath}`,
         '- `planned` → `in_execution`: when ready to execute',
         '- `in_execution` → `in_review`: when delivery is complete (for required/expedited review)',
         '- `in_execution` → `approved`: when delivery is complete (for optional review)',
@@ -334,7 +370,7 @@ function generateToolInstructions(manifest: BraidManifest, roleId: string, role:
 function generateRoleWorkflows(manifest: BraidManifest, roleId: string, role: RoleConfig): string {
   const persona = PERSONA_TEMPLATES[roleId];
   if (persona) {
-    return `## Your Typical Workflows\n\n${persona.workflowDetail}\n`;
+    return `## Your Typical Workflows\n\n${applyArtifactPathSubstitutions(manifest, persona.workflowDetail)}\n`;
   }
 
   // Fallback for roles without persona templates
@@ -413,7 +449,12 @@ function generateAgents(manifest: BraidManifest, roleId: string, role: RoleConfi
   // Deliverable guidance from persona
   const persona = PERSONA_TEMPLATES[roleId];
   if (persona) {
-    lines.push("## Deliverable Quality Guide", "", persona.deliverableGuidance, "");
+    lines.push(
+      "## Deliverable Quality Guide",
+      "",
+      applyArtifactPathSubstitutions(manifest, persona.deliverableGuidance),
+      "",
+    );
   }
 
   // Role-specific workflows
@@ -423,7 +464,7 @@ function generateAgents(manifest: BraidManifest, roleId: string, role: RoleConfi
   if (persona && persona.successMetrics.length > 0) {
     lines.push("## Success Metrics", "");
     for (const metric of persona.successMetrics) {
-      lines.push(`- ${metric}`);
+      lines.push(`- ${applyArtifactPathSubstitutions(manifest, metric)}`);
     }
     lines.push("");
   }

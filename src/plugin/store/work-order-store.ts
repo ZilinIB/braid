@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile, readdir, stat } from "node:fs/promises";
-import { join, resolve, relative } from "node:path";
+import { dirname, join, resolve, relative } from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
 export type WorkOrderStatus = {
@@ -25,10 +25,17 @@ export type WorkOrderStatus = {
 };
 
 export class WorkOrderStore {
-  constructor(private baseDir: string) {}
+  constructor(
+    private baseDir: string,
+    private statusFile: string = "status.yaml",
+  ) {}
 
   private woDir(woId: string): string {
     return join(this.baseDir, woId);
+  }
+
+  private statusPath(woId: string): string {
+    return join(this.woDir(woId), this.statusFile);
   }
 
   async nextId(): Promise<string> {
@@ -56,14 +63,17 @@ export class WorkOrderStore {
   }
 
   async readStatus(woId: string): Promise<WorkOrderStatus> {
-    const path = join(this.woDir(woId), "status.yaml");
+    const path = this.statusPath(woId);
+    this.assertWithinBoundary(woId, path);
     const raw = await readFile(path, "utf-8");
     return parseYaml(raw) as WorkOrderStatus;
   }
 
   async writeStatus(woId: string, status: WorkOrderStatus): Promise<void> {
     status.updated_at = new Date().toISOString();
-    const path = join(this.woDir(woId), "status.yaml");
+    const path = this.statusPath(woId);
+    this.assertWithinBoundary(woId, path);
+    await mkdir(dirname(path), { recursive: true });
     await writeFile(path, stringifyYaml(status), "utf-8");
   }
 

@@ -1,3 +1,4 @@
+import { isAbsolute, normalize } from "node:path";
 import type { BraidManifest, ValidationError, ValidationResult } from "./types.js";
 
 type CheckContext = {
@@ -6,6 +7,12 @@ type CheckContext = {
 };
 
 type Check = (manifest: BraidManifest, ctx: CheckContext) => ValidationError[];
+
+function isSafeRelativePath(path: string): boolean {
+  if (!path || isAbsolute(path)) return false;
+  const normalized = normalize(path);
+  return normalized !== "." && !normalized.split(/[/\\]/).some((segment) => segment === "..");
+}
 
 function collectRoleRefs(manifest: BraidManifest): Array<{ role: string; path: string }> {
   const refs: Array<{ role: string; path: string }> = [];
@@ -229,6 +236,15 @@ const artifactOwnerCoherence: Check = (manifest, ctx) => {
       if (!art.owners_by_type) {
         errors.push({ rule: "artifactOwnerCoherence", path: base, message: `Artifact "${name}" has owner_mode "by_work_order_type" but no owners_by_type` });
       } else {
+        for (const woType of woTypes) {
+          if (!(woType in art.owners_by_type)) {
+            errors.push({
+              rule: "artifactOwnerCoherence",
+              path: `${base}.owners_by_type`,
+              message: `Artifact "${name}" is missing an owner for work order type "${woType}"`,
+            });
+          }
+        }
         for (const [woType, owner] of Object.entries(art.owners_by_type)) {
           if (!woTypes.has(woType)) {
             errors.push({ rule: "artifactOwnerCoherence", path: `${base}.owners_by_type.${woType}`, message: `Work order type "${woType}" does not exist` });
@@ -352,6 +368,73 @@ const escalationNotifyRolesExist: Check = (manifest, ctx) => {
   return errors;
 };
 
+const modeOverridesCoherent: Check = (manifest, ctx) => {
+  const errors: ValidationError[] = [];
+  for (const [typeName, woType] of Object.entries(manifest.protocol.work_orders.types)) {
+    if (!woType.mode_overrides) continue;
+    if (!woType.modes || woType.modes.length === 0) {
+      errors.push({
+        rule: "modeOverridesCoherent",
+        path: `protocol.work_orders.types.${typeName}.mode_overrides`,
+        message: `Work order type "${typeName}" defines mode_overrides but has no modes`,
+      });
+      continue;
+    }
+
+    const modes = new Set(woType.modes);
+    for (const mode of Object.keys(woType.mode_overrides)) {
+      if (!modes.has(mode)) {
+        errors.push({
+          rule: "modeOverridesCoherent",
+          path: `protocol.work_orders.types.${typeName}.mode_overrides.${mode}`,
+          message: `Mode override "${mode}" is not declared in protocol.work_orders.types.${typeName}.modes`,
+        });
+      }
+    }
+  }
+  return errors;
+};
+
+const artifactPathsSafe: Check = (manifest, ctx) => {
+  const errors: ValidationError[] = [];
+  for (const [name, art] of Object.entries(manifest.protocol.artifacts)) {
+    const base = `protocol.artifacts.${name}`;
+
+    if (art.kind === "file") {
+      if (!art.file) {
+        errors.push({
+          rule: "artifactPathsSafe",
+          path: base,
+          message: `File artifact "${name}" is missing "file"`,
+        });
+      } else if (!isSafeRelativePath(art.file)) {
+        errors.push({
+          rule: "artifactPathsSafe",
+          path: `${base}.file`,
+          message: `Artifact path "${art.file}" must be a safe relative path`,
+        });
+      }
+      continue;
+    }
+
+    if (art.directory && !isSafeRelativePath(art.directory)) {
+      errors.push({
+        rule: "artifactPathsSafe",
+        path: `${base}.directory`,
+        message: `Artifact directory "${art.directory}" must be a safe relative path`,
+      });
+    }
+    if (art.index && !isSafeRelativePath(art.index)) {
+      errors.push({
+        rule: "artifactPathsSafe",
+        path: `${base}.index`,
+        message: `Artifact index "${art.index}" must be a safe relative path`,
+      });
+    }
+  }
+  return errors;
+};
+
 const graphRolesComplete: Check = (manifest, ctx) => {
   const { roleIds } = ctx;
   const graphRoles = new Set(Object.keys(manifest.graph.allowed_spawn_edges));
@@ -378,6 +461,8 @@ const ALL_CHECKS: Check[] = [
   batonTransfersCoherent,
   sessionModeConsistency,
   escalationNotifyRolesExist,
+  modeOverridesCoherent,
+  artifactPathsSafe,
   graphRolesComplete,
 ];
 
