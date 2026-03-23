@@ -23,7 +23,7 @@ import { loadManifestSync, createWorkflowRuntime, TOOL_DEFINITIONS } from "../in
 export function register(api: {
   pluginConfig?: Record<string, unknown>;
   registerTool: (tool: unknown, opts?: { name?: string }) => void;
-  registerHook: (event: string, handler: (...args: unknown[]) => unknown) => void;
+  registerHook: (event: string, handler: (...args: unknown[]) => unknown, opts?: { name?: string }) => void;
   resolvePath: (p: string) => string;
 }) {
   const manifestPath = api.resolvePath(
@@ -81,7 +81,7 @@ export function register(api: {
     } catch {
       return {};
     }
-  });
+  }, { name: "braid-wo-context" });
 }
 
 export default { register };
