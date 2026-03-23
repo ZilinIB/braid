@@ -116,12 +116,12 @@ describe("transition prerequisite enforcement", () => {
     woId = result.match(/WO-\d{4}-\d{2}-\d{2}-\d{3}/)![0];
   });
 
-  it("rejects opened -> briefed without brief.md", async () => {
+  it("rejects opened -> briefed without brief artifact", async () => {
     const result = await runtime.callTool("product_lead", "wo_transition", {
       wo_id: woId, to: "briefed",
     });
     expect(result).toContain("Error");
-    expect(result).toContain("brief.md");
+    expect(result).toContain("brief");
   });
 
   it("allows opened -> briefed after writing brief.md", async () => {
@@ -245,5 +245,110 @@ describe("executive summary readback", () => {
     expect(Object.keys(reports).length).toBeGreaterThan(0);
     const summaryContent = Object.values(reports).find((v) => v.includes("Summary content"));
     expect(summaryContent).toBeDefined();
+  });
+
+  it("summary is readable via report_read(role: chief_of_staff)", async () => {
+    await runtime.callTool("chief_of_staff", "report_write", {
+      content: "## Company Snapshot\n\nSummary via role read.",
+    });
+
+    const result = await runtime.callTool("chief_of_staff", "report_read", {
+      role: "chief_of_staff",
+    });
+    expect(result).toContain("Summary via role read");
+    expect(result).not.toContain("No report found");
+  });
+});
+
+// ── Follow-up Finding 1: Non-default artifact paths ──
+
+describe("manifest-derived artifact paths", () => {
+  it("transition checks use manifest paths, not hardcoded filenames", async () => {
+    // Modify the manifest to use a non-default brief filename
+    const raw = await readFile(FIXTURE_PATH, "utf-8");
+    const manifest = parseManifest(parseYaml(raw));
+    manifest.protocol.artifacts.brief!.file = "scope.md";
+
+    const tmpDir2 = await mkdtemp(join(tmpdir(), "braid-reg-"));
+    const rt = createWorkflowRuntime(manifest, tmpDir2);
+
+    // Open a WO
+    const openResult = await rt.callTool("chief_of_staff", "wo_open", {
+      title: "Test", type: "build", request_content: "test",
+    });
+    const woId2 = openResult.match(/WO-\d{4}-\d{2}-\d{2}-\d{3}/)![0];
+
+    // Write brief using the artifact API (which resolves to scope.md)
+    const writeResult = await rt.callTool("product_lead", "wo_write", {
+      wo_id: woId2, artifact: "brief", content: "# Brief\n\nScope doc",
+    });
+    expect(writeResult).toContain("scope.md");
+
+    // Transition should succeed because the engine checks scope.md, not brief.md
+    const transResult = await rt.callTool("product_lead", "wo_transition", {
+      wo_id: woId2, to: "briefed",
+    });
+    expect(transResult).toContain("briefed");
+    expect(transResult).not.toContain("Error");
+  });
+
+  it("wo_open stores manifest-derived paths in status artifacts", async () => {
+    const raw = await readFile(FIXTURE_PATH, "utf-8");
+    const manifest = parseManifest(parseYaml(raw));
+    manifest.protocol.artifacts.brief!.file = "scope.md";
+
+    const tmpDir2 = await mkdtemp(join(tmpdir(), "braid-reg-"));
+    const rt = createWorkflowRuntime(manifest, tmpDir2);
+
+    const openResult = await rt.callTool("chief_of_staff", "wo_open", {
+      title: "Test", type: "build", request_content: "test",
+    });
+    const woId2 = openResult.match(/WO-\d{4}-\d{2}-\d{2}-\d{3}/)![0];
+
+    const statusStr = await rt.callTool("chief_of_staff", "wo_status", { wo_id: woId2 });
+    const status = JSON.parse(statusStr);
+    expect(status.artifacts.brief).toBe("scope.md");
+  });
+});
+
+// ── Follow-up Finding 2: mode_overrides review policy ──
+
+describe("mode_overrides review policy", () => {
+  it("ops/incident with optional override allows in_execution -> approved", async () => {
+    const raw = await readFile(FIXTURE_PATH, "utf-8");
+    const manifest = parseManifest(parseYaml(raw));
+    // Override incident review policy to optional
+    manifest.protocol.work_orders.types.ops!.mode_overrides = {
+      incident: { review_policy: "optional", default_severity: "high" },
+    };
+
+    const tmpDir2 = await mkdtemp(join(tmpdir(), "braid-reg-"));
+    const rt = createWorkflowRuntime(manifest, tmpDir2);
+
+    // Open an ops/incident WO
+    const openResult = await rt.callTool("chief_of_staff", "wo_open", {
+      title: "Incident", type: "ops", mode: "incident", request_content: "outage",
+    });
+    const woId2 = openResult.match(/WO-\d{4}-\d{2}-\d{2}-\d{3}/)![0];
+
+    // Verify status shows optional review policy
+    const statusStr = await rt.callTool("chief_of_staff", "wo_status", { wo_id: woId2 });
+    const status = JSON.parse(statusStr);
+    expect(status.review_policy).toBe("optional");
+
+    // Progress through states
+    await rt.callTool("tech_lead", "wo_write", { wo_id: woId2, artifact: "brief", content: "brief" });
+    await rt.callTool("tech_lead", "wo_transition", { wo_id: woId2, to: "briefed" });
+    await rt.callTool("tech_lead", "wo_write", { wo_id: woId2, artifact: "plan", content: "plan" });
+    await rt.callTool("tech_lead", "wo_transition", { wo_id: woId2, to: "planned" });
+    await rt.callTool("tech_lead", "wo_transition", { wo_id: woId2, to: "in_execution" });
+    await rt.callTool("tech_lead", "wo_write", { wo_id: woId2, artifact: "delivery", content: "done" });
+
+    // With optional review policy, should be able to skip review and go to approved
+    const approveResult = await rt.callTool("tech_lead", "wo_transition", {
+      wo_id: woId2, to: "approved",
+    });
+    expect(approveResult).toContain("approved");
+    expect(approveResult).not.toContain("Error");
   });
 });

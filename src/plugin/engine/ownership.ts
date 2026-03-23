@@ -108,6 +108,22 @@ export function checkOwnership(
   };
 }
 
+/**
+ * Build a map of artifact logical name -> canonical file path from the manifest.
+ * Used by the state machine to check artifact existence without hardcoding paths.
+ */
+export function buildArtifactPathMap(manifest: BraidManifest): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const [name, art] of Object.entries(manifest.protocol.artifacts)) {
+    if (art.kind === "file" && art.file) {
+      map[name] = art.file;
+    } else if (art.kind === "family" && art.directory && art.index) {
+      map[name] = `${art.directory}/${art.index}`;
+    }
+  }
+  return map;
+}
+
 function resolveCanonicalOwner(art: ArtifactConfig, woType: string): string | null {
   if (art.owner_mode === "fixed") {
     return art.default_owner ?? null;

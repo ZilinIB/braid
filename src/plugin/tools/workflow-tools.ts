@@ -2,7 +2,7 @@ import type { BraidManifest } from "../../manifest/types.js";
 import { WorkOrderStore, type WorkOrderStatus } from "../store/work-order-store.js";
 import { ReportStore } from "../store/report-store.js";
 import { checkTransition } from "../engine/state-machine.js";
-import { checkOwnership, resolveArtifactPath } from "../engine/ownership.js";
+import { checkOwnership, resolveArtifactPath, buildArtifactPathMap } from "../engine/ownership.js";
 import { checkBatonTransfer, applyBatonTransfer } from "../engine/baton.js";
 import { applyEscalation } from "../engine/escalation.js";
 
@@ -62,14 +62,7 @@ export async function woOpen(
     approved: false,
     blocked_by: [],
     baton_history: [],
-    artifacts: {
-      request: "request.md",
-      brief: "brief.md",
-      plan: "plan.md",
-      spec: "spec/index.md",
-      delivery: "delivery/index.md",
-      review: "review/index.md",
-    },
+    artifacts: buildArtifactPathMap(ctx.manifest),
   };
 
   await ctx.woStore.create(woId, status);
@@ -183,11 +176,11 @@ export async function woTransition(
     status.blocked_by = [];
   }
 
-  // Pre-check artifact existence on disk
+  // Pre-check artifact existence on disk using manifest-derived paths
+  const artifactPathMap = buildArtifactPathMap(ctx.manifest);
   const artifactExistsCache = new Map<string, boolean>();
-  const filesToCheck = ["request.md", "brief.md", "plan.md", "delivery/index.md", "review/index.md"];
-  for (const file of filesToCheck) {
-    artifactExistsCache.set(file, await ctx.woStore.artifactExists(args.wo_id, file));
+  for (const [logicalName, filePath] of Object.entries(artifactPathMap)) {
+    artifactExistsCache.set(logicalName, await ctx.woStore.artifactExists(args.wo_id, filePath));
   }
 
   const result = checkTransition(
@@ -195,8 +188,8 @@ export async function woTransition(
     status,
     args.to,
     ctx.callingRole,
-    (name: string) => artifactExistsCache.get(name) ?? false,
-    { reason: args.reason },
+    (logicalName: string) => artifactExistsCache.get(logicalName) ?? false,
+    { reason: args.reason, effectiveReviewPolicy: status.review_policy },
   );
 
   if (!result.allowed) {
@@ -283,6 +276,8 @@ export async function reportWrite(
   const isSummaryRole = ctx.callingRole === ctx.manifest.reporting.daily.summary_role;
   if (isSummaryRole) {
     await ctx.reportStore.writeSummary(date, args.content, ctx.manifest.reporting.daily.summary_file);
+    // Also write as a role report so report_read(role: "chief_of_staff") works
+    await ctx.reportStore.writeRoleReport(date, ctx.callingRole, args.content);
     return `Executive summary written for ${date}`;
   }
 

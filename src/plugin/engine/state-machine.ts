@@ -8,6 +8,8 @@ export type TransitionResult = {
 
 export type TransitionContext = {
   reason?: string;
+  /** Effective review policy — may differ from the base manifest type due to mode_overrides */
+  effectiveReviewPolicy?: string;
 };
 
 export function checkTransition(
@@ -30,6 +32,10 @@ export function checkTransition(
     return { allowed: false, reason: `Unknown work order type "${status.type}"` };
   }
 
+  // Use the effective review policy from the work order status (which accounts
+  // for mode_overrides), falling back to the base manifest type.
+  const effectiveReviewPolicy = ctx?.effectiveReviewPolicy ?? woType.review_policy;
+
   // Find matching transitions
   const matching = transitions.filter(
     (t) => t.from.includes(currentState) && t.to === toState,
@@ -51,60 +57,61 @@ export function checkTransition(
 
   // Check required conditions
   for (const transition of authorized) {
-    const unmet = checkRequires(transition.requires, status, woType, artifactExists, ctx);
+    const unmet = checkRequires(transition.requires, status, effectiveReviewPolicy, artifactExists, ctx);
     if (unmet.length === 0) {
       return { allowed: true, reason: "ok" };
     }
   }
 
   // All matching transitions had unmet conditions — report from the first one
-  const unmet = checkRequires(authorized[0]!.requires, status, woType, artifactExists, ctx);
+  const unmet = checkRequires(authorized[0]!.requires, status, effectiveReviewPolicy, artifactExists, ctx);
   return { allowed: false, reason: `Unmet conditions: ${unmet.join(", ")}` };
 }
 
 function checkRequires(
   requires: string[],
   status: WorkOrderStatus,
-  woType: { review_policy: string },
+  reviewPolicy: string,
   artifactExists: (name: string) => boolean,
   ctx?: TransitionContext,
 ): string[] {
   const unmet: string[] = [];
   for (const req of requires) {
     switch (req) {
+      // Artifact existence checks use logical names resolved by the caller
       case "request":
-        if (!artifactExists("request.md")) unmet.push("request.md must exist");
+        if (!artifactExists("request")) unmet.push("request artifact must exist");
         break;
       case "brief":
-        if (!artifactExists("brief.md")) unmet.push("brief.md must exist");
+        if (!artifactExists("brief")) unmet.push("brief artifact must exist");
         break;
       case "plan":
-        if (!artifactExists("plan.md")) unmet.push("plan.md must exist");
+        if (!artifactExists("plan")) unmet.push("plan artifact must exist");
         break;
       case "delivery":
-        if (!artifactExists("delivery/index.md")) unmet.push("delivery/index.md must exist");
+        if (!artifactExists("delivery")) unmet.push("delivery artifact must exist");
         break;
       case "review":
-        if (!artifactExists("review/index.md")) unmet.push("review/index.md must exist");
+        if (!artifactExists("review")) unmet.push("review artifact must exist");
         break;
       case "executable_scope":
-        if (!artifactExists("plan.md")) unmet.push("plan.md must exist for executable scope");
+        if (!artifactExists("plan")) unmet.push("plan artifact must exist for executable scope");
         break;
       case "review_policy_requires_review_or_expedited":
-        if (woType.review_policy !== "required" && woType.review_policy !== "expedited") {
+        if (reviewPolicy !== "required" && reviewPolicy !== "expedited") {
           unmet.push("review policy must be required or expedited");
         }
         break;
       case "review_policy_optional":
-        if (woType.review_policy !== "optional") {
+        if (reviewPolicy !== "optional") {
           unmet.push("review policy must be optional");
         }
         break;
       case "passing_review":
-        if (!artifactExists("review/index.md")) unmet.push("review/index.md must exist");
+        if (!artifactExists("review")) unmet.push("review artifact must exist");
         break;
       case "rework_required":
-        if (!artifactExists("review/index.md")) unmet.push("review/index.md must exist");
+        if (!artifactExists("review")) unmet.push("review artifact must exist");
         break;
       case "blocker_recorded":
         if (status.blocked_by.length === 0) unmet.push("blocker must be recorded");
