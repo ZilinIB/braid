@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import type { BraidManifest, RoleConfig, RoleModel } from "../manifest/types.js";
 
 export type ChannelBindingInput = {
@@ -9,6 +10,10 @@ export type ChannelBindingInput = {
 export type GenerateConfigOptions = {
   manifestPath?: string;
   orgBaseDir?: string;
+  /** Resolve workspace/plugin paths as absolute. Needed for OpenClaw integration. */
+  absolutePaths?: boolean;
+  /** Base directory to resolve relative paths against (defaults to cwd). */
+  baseDir?: string;
 };
 
 type AgentEntry = {
@@ -98,7 +103,10 @@ export function generateOpenClawConfig(
   channelBinding: ChannelBindingInput,
   options?: GenerateConfigOptions,
 ): OpenClawConfigOutput {
-  const workspacesDir = manifest.generation.targets.openclaw.output_workspaces_dir;
+  const baseDir = options?.baseDir ?? process.cwd();
+  const resolvePath = (p: string) => options?.absolutePaths ? resolve(baseDir, p) : p;
+
+  const workspacesDir = resolvePath(manifest.generation.targets.openclaw.output_workspaces_dir);
   const userFacingRole = manifest.generation.targets.openclaw.user_binding_role;
 
   const agents: AgentEntry[] = Object.entries(manifest.roles).map(([roleId, role]) =>
@@ -130,8 +138,8 @@ export function generateOpenClawConfig(
         "braid-workflow": {
           enabled: true,
           config: {
-            manifestPath: options?.manifestPath ?? "manifests/software-product-company.yaml",
-            ...(options?.orgBaseDir && { orgBaseDir: options.orgBaseDir }),
+            manifestPath: resolvePath(options?.manifestPath ?? "manifests/software-product-company.yaml"),
+            ...(options?.orgBaseDir && { orgBaseDir: resolvePath(options.orgBaseDir) }),
           },
         },
       },

@@ -5,3 +5,5 @@ export type { WorkspaceFile } from "./workspace-bootstrap.js";
 export { writeOpenClawConfig, writeWorkspaces } from "./writers.js";
 export { generateCronJobs, generateCronScript, generateCronCommands } from "./cron-jobs.js";
 export type { CronJobSpec } from "./cron-jobs.js";
+export { integrateIntoOpenClaw } from "./integrate.js";
+export type { IntegrateOptions, IntegrateResult } from "./integrate.js";

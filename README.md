@@ -20,79 +20,122 @@ OpenClaw configuration needed to run that organization with real agent lanes.
 - A giant catalog of unrelated agents
 - A replacement for OpenClaw
 
-## Getting Started
+## Quick Start
 
-### Prerequisites
+### Step 1: Set up the workspace
 
-- [OpenClaw](https://github.com/openclaw/openclaw) installed and running
-- Node.js 22+ and pnpm
-- A messaging channel configured in OpenClaw (Telegram, Discord, Slack, etc.)
-
-### Workspace Setup
-
-Braid and OpenClaw live as sibling packages in a pnpm workspace. On a fresh
-machine:
+Braid and OpenClaw live as sibling repos in a shared workspace.
 
 ```bash
-mkdir workspace && cd workspace
+mkdir clawspace && cd clawspace
 git clone git@github.com:ZilinIB/braid.git braid
 ./braid/scripts/setup-workspace.sh
 ```
 
-This clones OpenClaw, creates the workspace config, and installs dependencies.
+This clones OpenClaw, creates workspace config, and installs dependencies.
+If you already have both repos, just run the setup script from the parent
+directory.
 
-If you already have both repos cloned as siblings:
+### Step 2: Set up OpenClaw
 
-```bash
-cd /path/to/parent-of-both-repos
-./braid/scripts/setup-workspace.sh
-```
-
-The resulting directory structure:
-
-```text
-workspace/
-  package.json              workspace root (not a git repo)
-  pnpm-workspace.yaml
-  openclaw/                 independent git repo
-  braid/                    independent git repo
-```
-
-Both repos keep their own git history and remotes. The workspace config is
-local development convenience — two small files that the setup script creates.
-
-### Initialize Braid
+If you haven't already, initialize OpenClaw and configure your model and
+channel:
 
 ```bash
-cd braid
-pnpm braid init --channel telegram
+cd openclaw
+openclaw setup
 ```
 
-This validates the manifest, generates OpenClaw config + workspace files,
-creates org directories, and produces a cron setup script.
+Make sure you have an API key for your model provider:
 
-### Integrate with OpenClaw
+```bash
+export OPENAI_API_KEY=sk-...
+```
 
-After `braid init`, you need to merge Braid's generated agent config into your
-OpenClaw installation:
+Configure a messaging channel (Telegram, Discord, Slack, etc.) through the
+OpenClaw setup wizard or by editing `~/.openclaw/openclaw.json`.
 
-1. Copy the agent list, bindings, and plugin entry from
-   `generated/braid/openclaw.json` into your OpenClaw config
-2. Add the plugin path: `plugins.load.paths = ["/path/to/braid/src/plugin/openclaw"]`
-3. Run `./generated/braid/setup-cron.sh` to create daily reporting cron jobs
-4. Start OpenClaw and message `chief_of_staff`
+### Step 3: Initialize Braid
 
-### CLI Commands
+```bash
+cd ../braid
+npm run braid -- init --channel telegram
+```
+
+Replace `telegram` with your configured channel. This:
+- validates the manifest
+- generates OpenClaw agent config with absolute paths
+- generates per-role workspace files (SOUL.md, AGENTS.md, IDENTITY.md)
+- creates org directories for work orders and reports
+- generates a cron setup script for daily reporting
+
+### Step 4: Integrate into OpenClaw
+
+```bash
+npm run braid -- integrate --channel telegram
+```
+
+This patches your `~/.openclaw/openclaw.json` to add:
+- 10 Braid agents with workspace paths and spawn allowlists
+- channel binding for `chief_of_staff`
+- the `braid-workflow` plugin with 10 workflow tools
+- the plugin load path
+
+A backup of your original config is created automatically.
+
+### Step 5: Set up daily reporting (optional)
+
+```bash
+./generated/braid/setup-cron.sh
+```
+
+This creates 10 staggered cron jobs in OpenClaw — one per role — for daily
+operational reporting, with the executive summary last.
+
+### Step 6: Start and talk
+
+```bash
+cd ../openclaw
+openclaw gateway run
+```
+
+Message `chief_of_staff` on your configured channel. Try:
+
+> "Build a landing page for our new product. Focus on conversion — we need
+> a hero section, social proof, and a clear CTA."
+
+Chief of Staff will open a `build` work order, spawn Product Lead to write
+the brief, baton-transfer to Tech Lead for planning and execution, route
+through QA Guard for review, and report back to you with the outcome.
+
+## CLI Commands
 
 ```text
 braid validate                  Validate the manifest
 braid generate --channel <ch>   Generate config and workspace files
 braid setup --channel <ch>      Generate + create org directories
 braid init --channel <ch>       Full setup including cron script
+braid integrate --channel <ch>  Patch Braid into OpenClaw config
 braid setup-cron                Generate daily reporting cron jobs
 ```
 
 All commands accept `--manifest <path>` (default: `manifests/software-product-company.yaml`).
+
+The `integrate` command accepts `--openclaw-config <path>` to target a
+non-default config location, and `--no-backup` to skip the automatic backup.
+
+## Moving to a New Machine
+
+```bash
+mkdir clawspace && cd clawspace
+git clone git@github.com:ZilinIB/braid.git braid
+./braid/scripts/setup-workspace.sh
+cd braid
+npm run braid -- init --channel telegram
+npm run braid -- integrate --channel telegram
+```
+
+Five commands from zero to running.
 
 ## Core Principles
 
@@ -109,79 +152,57 @@ All commands accept `--manifest <path>` (default: `manifests/software-product-co
 
 The default Braid company is a lean software product company:
 
-- `chief_of_staff`
-- `product_lead`
-- `tech_lead`
-- `growth_hacker`
-- `research_analyst`
-- `design_lead`
-- `frontend_engineer`
-- `backend_engineer`
-- `platform_engineer`
-- `qa_guard`
+- `chief_of_staff` — intake, routing, summaries, escalation
+- `product_lead` — scope, priorities, success criteria
+- `tech_lead` — planning, execution, integration
+- `growth_hacker` — distribution, SEO, experiments
+- `research_analyst` — evidence gathering
+- `design_lead` — UX/UI execution
+- `frontend_engineer` — client-side implementation
+- `backend_engineer` — APIs, data models, integrations
+- `platform_engineer` — deployment, CI/CD, reliability
+- `qa_guard` — review, quality gates, release readiness
 
-See [docs/roles-and-graph.md](docs/roles-and-graph.md) for exact boundaries
-and the communication graph.
+See [docs/roles-and-graph.md](docs/roles-and-graph.md) for the full
+communication graph and authority boundaries.
+
+## How It Works
+
+1. You message `chief_of_staff` with a request
+2. CoS opens a work order and spawns the appropriate role
+3. Roles produce canonical artifacts (brief, plan, spec, delivery, review)
+4. The work order moves through a state machine: opened → briefed → planned → in_execution → in_review → approved → done
+5. Artifact ownership is enforced — only the designated owner can write each file
+6. Cross-lane handoffs use baton transfers recorded in the work order
+7. QA Guard reviews against the brief's success criteria before approval
+8. CoS closes the work order and reports the outcome to you
 
 ## Workflow Lanes
 
 Braid v1 supports four work-order types:
 
-- `build`
-- `research`
-- `growth`
-- `ops`
+- `build` — new features, bug fixes, implementation work
+- `research` — investigations, market analysis, evidence gathering
+- `growth` — distribution, campaigns, SEO, audience experiments
+- `ops` — infrastructure, incidents, maintenance (with `planned_change`, `incident`, `maintenance` modes)
 
-`ops` further distinguishes:
-
-- `planned_change`
-- `incident`
-- `maintenance`
-
-Each work order moves through a small state machine and a fixed artifact model.
-The protocol keeps `request.md`, `brief.md`, `plan.md`, and `status.yaml` as
-fixed roots, while `spec/`, `delivery/`, and `review/` expand into artifact
-families when work needs multiple domain-specific outputs. See
-[docs/work-order-protocol.md](docs/work-order-protocol.md).
-
-## Reporting Loop
-
-Braid separates execution from operational reporting.
-
-- Work orders track active company work
-- Daily reports track each role's operational posture
-- Urgent blockers and critical findings escalate immediately through the workflow protocol
-- `chief_of_staff` produces the only executive summary by default
-
-See [docs/daily-reporting.md](docs/daily-reporting.md).
+See [docs/work-order-protocol.md](docs/work-order-protocol.md).
 
 ## Architecture
-
-Braid is designed as a thin but opinionated layer on top of OpenClaw:
-
-- org manifest
-- config and persona generator
-- OpenClaw agent topology
-- workflow and ledger plugin
-- per-role workspaces and memory
-- scheduled reporting jobs
 
 See [docs/architecture.md](docs/architecture.md).
 
 ## Manifest
 
-The default company shape is defined as a manifest, which tooling uses as the
-single source of truth for generation and runtime policy:
+The company shape is defined as a single YAML manifest:
 
 - Schema: [docs/manifest-schema.md](docs/manifest-schema.md)
-- Default manifest: [manifests/software-product-company.yaml](manifests/software-product-company.yaml)
+- Default: [manifests/software-product-company.yaml](manifests/software-product-company.yaml)
 
 ## Examples
 
-- [examples/sample-build-wo/](examples/sample-build-wo/) — a complete build
-  work order with all artifacts
-- [examples/sample-daily-reports/](examples/sample-daily-reports/) — daily role
-  report and executive summary
+- [examples/sample-build-wo/](examples/sample-build-wo/) — complete build work order with all artifacts
+- [examples/sample-daily-reports/](examples/sample-daily-reports/) — daily role report and executive summary
 
 ## Repo Structure
 
@@ -190,7 +211,7 @@ manifests/           company manifest (source of truth)
 docs/                protocol and design docs
 src/
   manifest/          parser, schema, validator
-  generator/         OpenClaw config + workspace + cron generators
+  generator/         config, workspace, cron, and integrate generators
   plugin/
     engine/          state machine, ownership, baton, escalation
     store/           work order and report file I/O

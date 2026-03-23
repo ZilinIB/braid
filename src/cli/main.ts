@@ -7,6 +7,7 @@ import { loadManifest } from "../manifest/index.js";
 import { generateOpenClawConfig } from "../generator/openclaw-config.js";
 import { writeOpenClawConfig, writeWorkspaces } from "../generator/writers.js";
 import { generateCronJobs, generateCronScript } from "../generator/cron-jobs.js";
+import { integrateIntoOpenClaw } from "../generator/integrate.js";
 import type { BraidManifest } from "../manifest/types.js";
 import type { ChannelBindingInput } from "../generator/openclaw-config.js";
 
@@ -46,6 +47,7 @@ async function generateAll(manifest: BraidManifest, channelBinding: ChannelBindi
   const config = generateOpenClawConfig(manifest, channelBinding, {
     manifestPath: opts.manifestPath,
     orgBaseDir: opts.orgBaseDir,
+    absolutePaths: true,
   });
   const configPath = resolve(manifest.generation.targets.openclaw.output_config);
   await writeOpenClawConfig(config, configPath);
@@ -149,9 +151,49 @@ addChannelOptions(
   console.log(`Agents: ${Object.keys(manifest.roles).length}`);
   console.log(`Channel: ${opts.channel}`);
   console.log(`\nNext steps:`);
-  console.log(`1. Add plugin to OpenClaw: plugins.load.paths = ["${resolve("src/plugin/openclaw")}"]`);
-  console.log(`2. Run cron setup: ./generated/braid/setup-cron.sh`);
-  console.log(`3. Start OpenClaw and message chief_of_staff`);
+  console.log(`1. Run: braid integrate`);
+  console.log(`2. Run: ./generated/braid/setup-cron.sh`);
+  console.log(`3. Start: openclaw gateway run`);
+}));
+
+addChannelOptions(
+  program
+    .command("integrate")
+    .description("Patch Braid agents, bindings, and plugin into the OpenClaw config")
+    .option("-m, --manifest <path>", "Path to manifest YAML", "manifests/software-product-company.yaml")
+    .option("--org-dir <dir>", "Base directory for org data", ".")
+    .option("--openclaw-config <path>", "Path to OpenClaw config (default: ~/.openclaw/openclaw.json)")
+    .option("--no-backup", "Skip backing up the existing config"),
+).action(wrapAction(async (opts: {
+  manifest: string;
+  orgDir: string;
+  openclawConfig?: string;
+  backup: boolean;
+} & ChannelOpts) => {
+  const manifest = await loadValidatedManifest(opts.manifest);
+  const orgBase = resolve(opts.orgDir);
+
+  const config = generateOpenClawConfig(manifest, buildChannelBinding(opts), {
+    manifestPath: opts.manifest,
+    orgBaseDir: orgBase,
+    absolutePaths: true,
+  });
+
+  const pluginPath = resolve("src/plugin/openclaw");
+
+  const result = await integrateIntoOpenClaw({
+    openclawConfigPath: opts.openclawConfig,
+    braidConfig: config,
+    pluginPath,
+    backup: opts.backup,
+  });
+
+  console.log(`OpenClaw config patched: ${result.configPath}`);
+  if (result.backupPath) console.log(`Backup: ${result.backupPath}`);
+  console.log(`  ${result.agentsAdded} agents added`);
+  console.log(`  ${result.bindingsAdded} bindings added`);
+  console.log(`  Plugin registered: braid-workflow`);
+  console.log(`  Plugin path: ${pluginPath}`);
 }));
 
 program
