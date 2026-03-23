@@ -1,6 +1,11 @@
 import type { BraidManifest, ValidationError, ValidationResult } from "./types.js";
 
-type Check = (manifest: BraidManifest) => ValidationError[];
+type CheckContext = {
+  roleIds: Set<string>;
+  woTypes: Set<string>;
+};
+
+type Check = (manifest: BraidManifest, ctx: CheckContext) => ValidationError[];
 
 function collectRoleRefs(manifest: BraidManifest): Array<{ role: string; path: string }> {
   const refs: Array<{ role: string; path: string }> = [];
@@ -78,8 +83,8 @@ function collectRoleRefs(manifest: BraidManifest): Array<{ role: string; path: s
   return refs;
 }
 
-const allRolesExist: Check = (manifest) => {
-  const roleIds = new Set(Object.keys(manifest.roles));
+const allRolesExist: Check = (manifest, ctx) => {
+  const { roleIds } = ctx;
   const errors: ValidationError[] = [];
   for (const ref of collectRoleRefs(manifest)) {
     if (!roleIds.has(ref.role)) {
@@ -93,7 +98,7 @@ const allRolesExist: Check = (manifest) => {
   return errors;
 };
 
-const canSpawnMatchesGraph: Check = (manifest) => {
+const canSpawnMatchesGraph: Check = (manifest, ctx) => {
   const errors: ValidationError[] = [];
   for (const [roleId, role] of Object.entries(manifest.roles)) {
     const graphEdges = manifest.graph.allowed_spawn_edges[roleId];
@@ -122,7 +127,7 @@ const canSpawnMatchesGraph: Check = (manifest) => {
   return errors;
 };
 
-const canAuthorFamiliesExist: Check = (manifest) => {
+const canAuthorFamiliesExist: Check = (manifest, ctx) => {
   const errors: ValidationError[] = [];
   const familyArtifacts = new Set(
     Object.entries(manifest.protocol.artifacts)
@@ -144,7 +149,7 @@ const canAuthorFamiliesExist: Check = (manifest) => {
   return errors;
 };
 
-const familyArtifactsComplete: Check = (manifest) => {
+const familyArtifactsComplete: Check = (manifest, ctx) => {
   const errors: ValidationError[] = [];
   for (const [name, art] of Object.entries(manifest.protocol.artifacts)) {
     if (art.kind !== "family") continue;
@@ -166,8 +171,8 @@ const familyArtifactsComplete: Check = (manifest) => {
   return errors;
 };
 
-const workOrderOwnerRolesExist: Check = (manifest) => {
-  const roleIds = new Set(Object.keys(manifest.roles));
+const workOrderOwnerRolesExist: Check = (manifest, ctx) => {
+  const { roleIds } = ctx;
   const errors: ValidationError[] = [];
   for (const [typeName, woType] of Object.entries(manifest.protocol.work_orders.types)) {
     const owners = [
@@ -191,8 +196,8 @@ const workOrderOwnerRolesExist: Check = (manifest) => {
   return errors;
 };
 
-const transitionRolesExist: Check = (manifest) => {
-  const roleIds = new Set(Object.keys(manifest.roles));
+const transitionRolesExist: Check = (manifest, ctx) => {
+  const { roleIds } = ctx;
   const errors: ValidationError[] = [];
   for (const t of manifest.protocol.transitions) {
     for (const r of t.requested_by) {
@@ -208,9 +213,9 @@ const transitionRolesExist: Check = (manifest) => {
   return errors;
 };
 
-const artifactOwnerCoherence: Check = (manifest) => {
-  const roleIds = new Set(Object.keys(manifest.roles));
-  const woTypes = new Set(Object.keys(manifest.protocol.work_orders.types));
+const artifactOwnerCoherence: Check = (manifest, ctx) => {
+  const { roleIds } = ctx;
+  const { woTypes } = ctx;
   const errors: ValidationError[] = [];
   for (const [name, art] of Object.entries(manifest.protocol.artifacts)) {
     const base = `protocol.artifacts.${name}`;
@@ -238,7 +243,7 @@ const artifactOwnerCoherence: Check = (manifest) => {
   return errors;
 };
 
-const singleUserFacingRole: Check = (manifest) => {
+const singleUserFacingRole: Check = (manifest, ctx) => {
   const userFacing = Object.entries(manifest.roles).filter(([, r]) => r.user_facing);
   if (userFacing.length === 0) {
     return [{ rule: "singleUserFacingRole", path: "roles", message: "No role has user_facing: true" }];
@@ -250,9 +255,9 @@ const singleUserFacingRole: Check = (manifest) => {
   return [];
 };
 
-const reportingOrderComplete: Check = (manifest) => {
+const reportingOrderComplete: Check = (manifest, ctx) => {
   const errors: ValidationError[] = [];
-  const roleIds = new Set(Object.keys(manifest.roles));
+  const { roleIds } = ctx;
   const orderSet = new Set<string>();
   for (const r of manifest.reporting.daily.order) {
     if (orderSet.has(r)) {
@@ -273,7 +278,7 @@ const reportingOrderComplete: Check = (manifest) => {
   return errors;
 };
 
-const requiredWorkOrderTypes: Check = (manifest) => {
+const requiredWorkOrderTypes: Check = (manifest, ctx) => {
   const errors: ValidationError[] = [];
   const required = ["build", "research", "growth", "ops"];
   const defined = new Set(Object.keys(manifest.protocol.work_orders.types));
@@ -285,9 +290,9 @@ const requiredWorkOrderTypes: Check = (manifest) => {
   return errors;
 };
 
-const batonTransfersCoherent: Check = (manifest) => {
-  const roleIds = new Set(Object.keys(manifest.roles));
-  const woTypes = new Set(Object.keys(manifest.protocol.work_orders.types));
+const batonTransfersCoherent: Check = (manifest, ctx) => {
+  const { roleIds } = ctx;
+  const { woTypes } = ctx;
   const errors: ValidationError[] = [];
   for (const bt of manifest.graph.allowed_baton_transfers) {
     if (!roleIds.has(bt.from)) {
@@ -305,9 +310,9 @@ const batonTransfersCoherent: Check = (manifest) => {
   return errors;
 };
 
-const sessionModeConsistency: Check = (manifest) => {
+const sessionModeConsistency: Check = (manifest, ctx) => {
   const errors: ValidationError[] = [];
-  const roleIds = new Set(Object.keys(manifest.roles));
+  const { roleIds } = ctx;
   const persistentSet = new Set(manifest.runtime.execution.persistent_roles);
   const spawnedSet = new Set(manifest.runtime.execution.spawned_roles);
 
@@ -331,8 +336,8 @@ const sessionModeConsistency: Check = (manifest) => {
   return errors;
 };
 
-const escalationNotifyRolesExist: Check = (manifest) => {
-  const roleIds = new Set(Object.keys(manifest.roles));
+const escalationNotifyRolesExist: Check = (manifest, ctx) => {
+  const { roleIds } = ctx;
   const errors: ValidationError[] = [];
   for (const [severity, roles] of Object.entries(manifest.protocol.escalation.notify_roles)) {
     for (const r of roles) {
@@ -347,8 +352,8 @@ const escalationNotifyRolesExist: Check = (manifest) => {
   return errors;
 };
 
-const graphRolesComplete: Check = (manifest) => {
-  const roleIds = new Set(Object.keys(manifest.roles));
+const graphRolesComplete: Check = (manifest, ctx) => {
+  const { roleIds } = ctx;
   const graphRoles = new Set(Object.keys(manifest.graph.allowed_spawn_edges));
   const errors: ValidationError[] = [];
   for (const roleId of roleIds) {
@@ -377,9 +382,13 @@ const ALL_CHECKS: Check[] = [
 ];
 
 export function validateManifest(manifest: BraidManifest): ValidationResult {
+  const ctx: CheckContext = {
+    roleIds: new Set(Object.keys(manifest.roles)),
+    woTypes: new Set(Object.keys(manifest.protocol.work_orders.types)),
+  };
   const errors: ValidationError[] = [];
   for (const check of ALL_CHECKS) {
-    errors.push(...check(manifest));
+    errors.push(...check(manifest, ctx));
   }
   return { ok: errors.length === 0, errors };
 }

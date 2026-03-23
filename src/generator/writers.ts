@@ -16,16 +16,20 @@ export async function writeWorkspaces(
   manifest: BraidManifest,
   outputDir: string,
 ): Promise<string[]> {
-  const written: string[] = [];
-  for (const roleId of Object.keys(manifest.roles)) {
-    const files = generateWorkspaceFiles(manifest, roleId);
-    const roleDir = join(outputDir, roleId);
-    await mkdir(roleDir, { recursive: true });
-    for (const file of files) {
-      const filePath = join(roleDir, file.relativePath);
-      await writeFile(filePath, file.content, "utf-8");
-      written.push(filePath);
-    }
-  }
-  return written;
+  const roleEntries = Object.keys(manifest.roles).map((roleId) => ({
+    roleId,
+    files: generateWorkspaceFiles(manifest, roleId),
+    roleDir: join(outputDir, roleId),
+  }));
+
+  const results = await Promise.all(
+    roleEntries.map(async ({ files, roleDir }) => {
+      await mkdir(roleDir, { recursive: true });
+      const paths = files.map((f) => join(roleDir, f.relativePath));
+      await Promise.all(files.map((f) => writeFile(join(roleDir, f.relativePath), f.content, "utf-8")));
+      return paths;
+    }),
+  );
+
+  return results.flat();
 }

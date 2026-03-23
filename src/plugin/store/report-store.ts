@@ -44,10 +44,9 @@ export class ReportStore {
 
   async readAllReports(date: string): Promise<Record<string, string>> {
     const roles = await this.listReports(date);
-    const reports: Record<string, string> = {};
-    for (const role of roles) {
-      reports[role] = await this.readRoleReport(date, role);
-    }
-    return reports;
+    const entries = await Promise.all(
+      roles.map(async (role) => [role, await this.readRoleReport(date, role)] as const),
+    );
+    return Object.fromEntries(entries);
   }
 }

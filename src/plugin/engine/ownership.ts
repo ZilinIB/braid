@@ -39,10 +39,7 @@ export function resolveArtifactPath(
 export function isSafeSubFile(subFile: string): boolean {
   if (!subFile || isAbsolute(subFile)) return false;
   const normalized = normalize(subFile);
-  if (normalized.startsWith("..") || normalized.includes("/../") || normalized === "..") return false;
-  // After normalization, the path should not escape upward
-  if (normalized.split("/").some((seg) => seg === "..")) return false;
-  return true;
+  return !normalized.split("/").some((seg) => seg === "..");
 }
 
 /**

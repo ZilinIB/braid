@@ -16,8 +16,10 @@
 import { readFileSync } from "node:fs";
 import { parse as parseYaml } from "yaml";
 import { parseManifest } from "../manifest/schema.js";
+import { validateManifest } from "../manifest/validate.js";
 import type { BraidManifest } from "../manifest/types.js";
 import { WorkOrderStore } from "./store/work-order-store.js";
+import { buildArtifactPathMap } from "./engine/ownership.js";
 import { ReportStore } from "./store/report-store.js";
 import {
   woOpen, woStatus, woRead, woWrite, woList,
@@ -44,8 +46,10 @@ export function createWorkflowRuntime(
     `${baseDir}/${manifest.reporting.daily.store}`,
   );
 
+  const artifactPathMap = buildArtifactPathMap(manifest);
+
   function makeCtx(roleId: string): ToolContext {
-    return { callingRole: roleId, manifest, woStore, reportStore };
+    return { callingRole: roleId, manifest, woStore, reportStore, artifactPathMap };
   }
 
   async function callTool(
@@ -85,7 +89,13 @@ export function createWorkflowRuntime(
 
 export function loadManifestSync(path: string): BraidManifest {
   const raw = readFileSync(path, "utf-8");
-  return parseManifest(parseYaml(raw));
+  const manifest = parseManifest(parseYaml(raw));
+  const validation = validateManifest(manifest);
+  if (!validation.ok) {
+    const messages = validation.errors.map((e) => `  [${e.rule}] ${e.path}: ${e.message}`);
+    throw new Error(`Manifest validation failed:\n${messages.join("\n")}`);
+  }
+  return manifest;
 }
 
 /**

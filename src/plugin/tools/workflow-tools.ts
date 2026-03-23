@@ -2,7 +2,7 @@ import type { BraidManifest } from "../../manifest/types.js";
 import { WorkOrderStore, type WorkOrderStatus } from "../store/work-order-store.js";
 import { ReportStore } from "../store/report-store.js";
 import { checkTransition } from "../engine/state-machine.js";
-import { checkOwnership, resolveArtifactPath, buildArtifactPathMap } from "../engine/ownership.js";
+import { checkOwnership, resolveArtifactPath } from "../engine/ownership.js";
 import { checkBatonTransfer, applyBatonTransfer } from "../engine/baton.js";
 import { applyEscalation } from "../engine/escalation.js";
 
@@ -11,9 +11,9 @@ export type ToolContext = {
   manifest: BraidManifest;
   woStore: WorkOrderStore;
   reportStore: ReportStore;
+  artifactPathMap: Record<string, string>;
 };
 
-// ── wo_open ──────────────────────────────────────────────────
 
 export async function woOpen(
   ctx: ToolContext,
@@ -34,6 +34,7 @@ export async function woOpen(
   }
 
   const woId = await ctx.woStore.nextId();
+  const now = new Date().toISOString();
 
   let reviewPolicy = woType.review_policy;
   let severity = "normal";
@@ -55,14 +56,14 @@ export async function woOpen(
     review_policy: reviewPolicy,
     severity,
     needs_human_attention: false,
-    opened_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    opened_at: now,
+    updated_at: now,
     current_lane: args.type,
     current_role: ctx.callingRole,
     approved: false,
     blocked_by: [],
     baton_history: [],
-    artifacts: buildArtifactPathMap(ctx.manifest),
+    artifacts: { ...ctx.artifactPathMap },
   };
 
   await ctx.woStore.create(woId, status);
@@ -71,7 +72,6 @@ export async function woOpen(
   return `Work order ${woId} opened: "${args.title}" (type: ${args.type}${args.mode ? `, mode: ${args.mode}` : ""})`;
 }
 
-// ── wo_status ────────────────────────────────────────────────
 
 export async function woStatus(
   ctx: ToolContext,
@@ -85,7 +85,6 @@ export async function woStatus(
   }
 }
 
-// ── wo_read ──────────────────────────────────────────────────
 
 export async function woRead(
   ctx: ToolContext,
@@ -102,7 +101,6 @@ export async function woRead(
   }
 }
 
-// ── wo_write ─────────────────────────────────────────────────
 
 export async function woWrite(
   ctx: ToolContext,
@@ -135,7 +133,6 @@ export async function woWrite(
   return `Wrote ${path} in ${args.wo_id}`;
 }
 
-// ── wo_list ──────────────────────────────────────────────────
 
 export async function woList(
   ctx: ToolContext,
@@ -153,7 +150,6 @@ export async function woList(
   return lines.join("\n");
 }
 
-// ── wo_transition ────────────────────────────────────────────
 
 export async function woTransition(
   ctx: ToolContext,
@@ -166,26 +162,24 @@ export async function woTransition(
     return `Error: work order "${args.wo_id}" not found`;
   }
 
-  // For blocked transitions, record the blocker
-  if (args.to === "blocked" && args.blocker) {
-    status.blocked_by.push(args.blocker);
-  }
+  // Temporarily apply blocker state for validation without mutating status
+  const blockedBy = args.to === "blocked" && args.blocker
+    ? [...status.blocked_by, args.blocker]
+    : status.state === "blocked" && args.to === "planned"
+      ? []
+      : status.blocked_by;
+  const statusForCheck = { ...status, blocked_by: blockedBy };
 
-  // For unblock (blocked -> planned), clear blockers
-  if (status.state === "blocked" && args.to === "planned") {
-    status.blocked_by = [];
-  }
-
-  // Pre-check artifact existence on disk using manifest-derived paths
-  const artifactPathMap = buildArtifactPathMap(ctx.manifest);
   const artifactExistsCache = new Map<string, boolean>();
-  for (const [logicalName, filePath] of Object.entries(artifactPathMap)) {
-    artifactExistsCache.set(logicalName, await ctx.woStore.artifactExists(args.wo_id, filePath));
-  }
+  await Promise.all(
+    Object.entries(ctx.artifactPathMap).map(async ([name, path]) => {
+      artifactExistsCache.set(name, await ctx.woStore.artifactExists(args.wo_id, path));
+    }),
+  );
 
   const result = checkTransition(
     ctx.manifest,
-    status,
+    statusForCheck,
     args.to,
     ctx.callingRole,
     (logicalName: string) => artifactExistsCache.get(logicalName) ?? false,
@@ -196,6 +190,7 @@ export async function woTransition(
     return `Error: ${result.reason}`;
   }
 
+  status.blocked_by = blockedBy;
   status.state = args.to;
   if (args.to === "approved") status.approved = true;
   if (args.to === "done") status.current_lane = "closed";
@@ -204,7 +199,6 @@ export async function woTransition(
   return `${args.wo_id} transitioned to "${args.to}"`;
 }
 
-// ── wo_baton ─────────────────────────────────────────────────
 
 export async function woBaton(
   ctx: ToolContext,
@@ -235,7 +229,6 @@ export async function woBaton(
   return `Baton transferred from "${ctx.callingRole}" to "${args.to}" on ${args.wo_id}. ${ctx.manifest.runtime.execution.dispatch_role} will spawn the receiving role.`;
 }
 
-// ── wo_escalate ──────────────────────────────────────────────
 
 export async function woEscalate(
   ctx: ToolContext,
@@ -265,7 +258,6 @@ export async function woEscalate(
   }
 }
 
-// ── report_write ─────────────────────────────────────────────
 
 export async function reportWrite(
   ctx: ToolContext,
@@ -285,7 +277,6 @@ export async function reportWrite(
   return `Daily report written for ${ctx.callingRole} on ${date}`;
 }
 
-// ── report_read ──────────────────────────────────────────────
 
 export async function reportRead(
   ctx: ToolContext,

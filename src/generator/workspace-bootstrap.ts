@@ -47,8 +47,6 @@ function laneOwnerTypes(manifest: BraidManifest, roleId: string): string[] {
     .map(([name]) => name);
 }
 
-// ── Persona styles by authority type ──
-
 const PERSONA_STYLES: Record<string, string> = {
   human_facing: [
     "You are the single point of contact between the organization and the human.",
@@ -94,8 +92,6 @@ const PERSONA_STYLES: Record<string, string> = {
   ].join("\n"),
 };
 
-// ── IDENTITY.md ──
-
 function generateIdentity(manifest: BraidManifest, roleId: string, role: RoleConfig): string {
   return [
     `# ${role.display_name}`,
@@ -109,8 +105,6 @@ function generateIdentity(manifest: BraidManifest, roleId: string, role: RoleCon
     "",
   ].join("\n");
 }
-
-// ── SOUL.md ──
 
 function generateSoul(manifest: BraidManifest, roleId: string, role: RoleConfig): string {
   const persona = PERSONA_TEMPLATES[roleId];

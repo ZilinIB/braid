@@ -99,22 +99,17 @@ export class WorkOrderStore {
   }
 
   async list(): Promise<Array<{ id: string; status: WorkOrderStatus }>> {
-    const results: Array<{ id: string; status: WorkOrderStatus }> = [];
+    let entries: string[];
     try {
-      const entries = await readdir(this.baseDir);
-      for (const entry of entries) {
-        if (entry.startsWith("WO-")) {
-          try {
-            const status = await this.readStatus(entry);
-            results.push({ id: entry, status });
-          } catch {
-            // skip unreadable work orders
-          }
-        }
-      }
+      entries = (await readdir(this.baseDir)).filter((e) => e.startsWith("WO-"));
     } catch {
-      // base dir may not exist
+      return [];
     }
-    return results;
+    const settled = await Promise.allSettled(
+      entries.map(async (id) => ({ id, status: await this.readStatus(id) })),
+    );
+    return settled
+      .filter((r): r is PromiseFulfilledResult<{ id: string; status: WorkOrderStatus }> => r.status === "fulfilled")
+      .map((r) => r.value);
   }
 }
