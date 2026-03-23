@@ -29,7 +29,6 @@ type AgentEntry = {
 };
 
 type BindingEntry = {
-  type: "route";
   agentId: string;
   match: {
     channel: string;
@@ -114,7 +113,6 @@ export function generateOpenClawConfig(
   );
 
   const binding: BindingEntry = {
-    type: "route",
     agentId: userFacingRole,
     match: {
       channel: channelBinding.channel,
