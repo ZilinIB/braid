@@ -311,6 +311,67 @@ describe("manifest-derived artifact paths", () => {
   });
 });
 
+describe("non-default request artifact path", () => {
+  it("wo_open writes request to manifest-derived path", async () => {
+    const raw = await readFile(FIXTURE_PATH, "utf-8");
+    const manifest = parseManifest(parseYaml(raw));
+    manifest.protocol.artifacts.request!.file = "intake.md";
+
+    const tmpDir2 = await mkdtemp(join(tmpdir(), "braid-reg-"));
+    const rt = createWorkflowRuntime(manifest, tmpDir2);
+
+    const openResult = await rt.callTool("chief_of_staff", "wo_open", {
+      title: "Test", type: "build", request_content: "the request",
+    });
+    const woId2 = openResult.match(/WO-\d{4}-\d{2}-\d{2}-\d{3}/)![0];
+
+    const readResult = await rt.callTool("chief_of_staff", "wo_read", {
+      wo_id: woId2, artifact: "request",
+    });
+    expect(readResult).toContain("the request");
+  });
+});
+
+describe("mode validation", () => {
+  it("rejects mode on work-order types that do not define modes", async () => {
+    const raw = await readFile(FIXTURE_PATH, "utf-8");
+    const manifest = parseManifest(parseYaml(raw));
+
+    const tmpDir2 = await mkdtemp(join(tmpdir(), "braid-reg-"));
+    const rt = createWorkflowRuntime(manifest, tmpDir2);
+
+    const result = await rt.callTool("chief_of_staff", "wo_open", {
+      title: "Test", type: "build", mode: "incident", request_content: "test",
+    });
+    expect(result).toContain("Error");
+    expect(result).toContain("does not support modes");
+  });
+});
+
+describe("no duplicate summary in report reads", () => {
+  let runtime: WorkflowRuntime;
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), "braid-reg-"));
+    const manifest = await loadManifest();
+    runtime = createWorkflowRuntime(manifest, tmpDir);
+  });
+
+  it("readAllReports returns one entry per role, no _summary duplicate", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+
+    await runtime.callTool("tech_lead", "report_write", { content: "tech report" });
+    await runtime.callTool("chief_of_staff", "report_write", { content: "summary" });
+
+    const reports = await runtime.reportStore.readAllReports(today);
+    const keys = Object.keys(reports);
+    expect(keys).toContain("chief_of_staff");
+    expect(keys).not.toContain("_summary");
+    expect(keys.filter((k) => k === "chief_of_staff")).toHaveLength(1);
+  });
+});
+
 // ── Follow-up Finding 2: mode_overrides review policy ──
 
 describe("mode_overrides review policy", () => {

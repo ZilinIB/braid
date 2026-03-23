@@ -19,18 +19,9 @@ export class ReportStore {
   }
 
   async writeSummary(date: string, content: string, summaryFile: string): Promise<void> {
-    const dir = this.dayDir(date);
-    await mkdir(dir, { recursive: true });
-    // Write into the date directory so readAllReports discovers it
-    await writeFile(join(dir, "_summary.md"), content, "utf-8");
-    // Also write to the top-level location per the manifest convention
     const fileName = summaryFile.replace("YYYY-MM-DD", date);
     await mkdir(this.baseDir, { recursive: true });
     await writeFile(join(this.baseDir, fileName), content, "utf-8");
-  }
-
-  async readSummary(date: string): Promise<string> {
-    return readFile(join(this.dayDir(date), "_summary.md"), "utf-8");
   }
 
   async listReports(date: string): Promise<string[]> {

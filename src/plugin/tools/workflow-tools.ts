@@ -29,6 +29,9 @@ export async function woOpen(
     return `Error: unknown work order type "${args.type}". Valid: ${Object.keys(woTypes).join(", ")}`;
   }
 
+  if (args.mode && !woType.modes) {
+    return `Error: type "${args.type}" does not support modes`;
+  }
   if (args.mode && woType.modes && !woType.modes.includes(args.mode)) {
     return `Error: unknown mode "${args.mode}" for type "${args.type}". Valid: ${woType.modes.join(", ")}`;
   }
@@ -67,7 +70,8 @@ export async function woOpen(
   };
 
   await ctx.woStore.create(woId, status);
-  await ctx.woStore.writeArtifact(woId, "request.md", args.request_content);
+  const requestPath = resolveArtifactPath(ctx.manifest, "request");
+  await ctx.woStore.writeArtifact(woId, requestPath ?? "request.md", args.request_content);
 
   return `Work order ${woId} opened: "${args.title}" (type: ${args.type}${args.mode ? `, mode: ${args.mode}` : ""})`;
 }
@@ -265,15 +269,16 @@ export async function reportWrite(
 ): Promise<string> {
   const date = args.date ?? new Date().toISOString().slice(0, 10);
 
+  // Always write as a role report — the summary role's report IS the executive summary.
+  // Also write the top-level summary file per manifest convention.
+  await ctx.reportStore.writeRoleReport(date, ctx.callingRole, args.content);
+
   const isSummaryRole = ctx.callingRole === ctx.manifest.reporting.daily.summary_role;
   if (isSummaryRole) {
     await ctx.reportStore.writeSummary(date, args.content, ctx.manifest.reporting.daily.summary_file);
-    // Also write as a role report so report_read(role: "chief_of_staff") works
-    await ctx.reportStore.writeRoleReport(date, ctx.callingRole, args.content);
     return `Executive summary written for ${date}`;
   }
 
-  await ctx.reportStore.writeRoleReport(date, ctx.callingRole, args.content);
   return `Daily report written for ${ctx.callingRole} on ${date}`;
 }
 
