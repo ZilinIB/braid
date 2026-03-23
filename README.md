@@ -130,12 +130,17 @@ non-default config location, and `--no-backup` to skip the automatic backup.
 mkdir clawspace && cd clawspace
 git clone git@github.com:ZilinIB/braid.git braid
 ./braid/scripts/setup-workspace.sh
+
+# If OpenClaw isn't set up on this machine yet:
+cd openclaw && openclaw setup && cd ..
+export OPENAI_API_KEY=sk-...
+
 cd braid
 npm run braid -- init --channel telegram
 npm run braid -- integrate --channel telegram
 ```
 
-Five commands from zero to running.
+Skip the `openclaw setup` line if OpenClaw is already configured on this machine.
 
 ## Core Principles
 
