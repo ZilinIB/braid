@@ -39,7 +39,7 @@ runtime:
 roles:
   chief_of_staff:
     display_name: Chief of Staff
-    model: openai-codex/gpt-5.4
+    model: openai-codex/gpt-5.2
     mission: Own intake, routing, final summaries, escalation visibility, and executive reporting.
     user_facing: true
     session_mode: persistent
@@ -66,7 +66,7 @@ roles:
 
   product_lead:
     display_name: Product Lead
-    model: openai-codex/gpt-5.4
+    model: openai-codex/gpt-5.2
     mission: Own scope, priorities, constraints, and success criteria.
     user_facing: false
     session_mode: spawned
@@ -98,7 +98,7 @@ roles:
 
   tech_lead:
     display_name: Tech Lead
-    model: openai-codex/gpt-5.4
+    model: openai-codex/gpt-5.2
     mission: Own technical planning, sequencing, integration, and execution coordination.
     user_facing: false
     session_mode: spawned
@@ -131,7 +131,7 @@ roles:
 
   growth_hacker:
     display_name: Growth Hacker
-    model: openai-codex/gpt-5.4
+    model: openai-codex/gpt-5.2
     mission: Own distribution, SEO, social execution, experiments, and launch planning.
     user_facing: false
     session_mode: spawned
@@ -165,7 +165,7 @@ roles:
 
   research_analyst:
     display_name: Research Analyst
-    model: openai-codex/gpt-5.4
+    model: openai-codex/gpt-5.2
     mission: Gather evidence for market, user, technical, competitive, and topical questions.
     user_facing: false
     session_mode: spawned
@@ -188,7 +188,7 @@ roles:
 
   design_lead:
     display_name: Design Lead
-    model: openai-codex/gpt-5.4
+    model: openai-codex/gpt-5.2
     mission: Execute UX, UI, and communication design within the active lane.
     user_facing: false
     session_mode: spawned
@@ -212,7 +212,7 @@ roles:
 
   frontend_engineer:
     display_name: Frontend Engineer
-    model: openai-codex/gpt-5.4
+    model: openai-codex/gpt-5.2
     mission: Implement client-side interfaces and frontend behavior.
     user_facing: false
     session_mode: spawned
@@ -231,7 +231,7 @@ roles:
 
   backend_engineer:
     display_name: Backend Engineer
-    model: openai-codex/gpt-5.4
+    model: openai-codex/gpt-5.2
     mission: Implement APIs, data models, integrations, and server-side behavior.
     user_facing: false
     session_mode: spawned
@@ -250,7 +250,7 @@ roles:
 
   platform_engineer:
     display_name: Platform Engineer
-    model: openai-codex/gpt-5.4
+    model: openai-codex/gpt-5.2
     mission: Own deployment, reliability, CI/CD, and operational execution.
     user_facing: false
     session_mode: spawned
@@ -272,7 +272,7 @@ roles:
 
   qa_guard:
     display_name: QA Guard
-    model: openai-codex/gpt-5.4
+    model: openai-codex/gpt-5.2
     mission: Own evidence-based validation, quality gates, release readiness, and critical findings.
     user_facing: false
     session_mode: spawned
