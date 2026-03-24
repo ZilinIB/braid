@@ -24,7 +24,7 @@ type AgentEntry = {
   model?: string;
   identity: { name: string };
   subagents?: { allowAgents?: string[] };
-  sandbox?: { mode: string; workspaceAccess: string; docker?: { binds: string[] } };
+  sandbox?: { mode: string; workspaceAccess: string; docker?: { binds: string[]; dangerouslyAllowExternalBindSources?: boolean } };
   tools?: { profile?: string; deny?: string[] };
 };
 
@@ -94,7 +94,10 @@ function buildAgentEntry(
     workspaceAccess: "rw",
   };
   if (projectDirs.length > 0) {
-    sandbox.docker = { binds: projectDirs.map(formatBindMount) };
+    sandbox.docker = {
+      binds: projectDirs.map(formatBindMount),
+      dangerouslyAllowExternalBindSources: true,
+    };
   }
   entry.sandbox = sandbox;
 
