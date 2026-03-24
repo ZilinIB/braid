@@ -24,8 +24,8 @@ type AgentEntry = {
   model?: string;
   identity: { name: string };
   subagents?: { allowAgents?: string[] };
-  sandbox?: { mode: string; workspaceAccess: string; docker?: { binds: string[]; dangerouslyAllowExternalBindSources?: boolean } };
-  tools?: { profile?: string; deny?: string[] };
+  sandbox?: { mode: string; workspaceAccess: string; browser?: { allowHostControl: boolean }; docker?: { binds: string[]; dangerouslyAllowExternalBindSources?: boolean } };
+  tools?: { profile?: string; allow?: string[]; deny?: string[] };
 };
 
 type BindingEntry = {
@@ -93,6 +93,13 @@ function buildAgentEntry(
     mode: role.user_facing ? "non-main" : "all",
     workspaceAccess: "rw",
   };
+  if (role.user_facing) {
+    sandbox.browser = {
+      // User-facing intake sessions need host-browser access for routine web
+      // review tasks; default sandbox-browser routing is a poor fit here.
+      allowHostControl: true,
+    };
+  }
   if (projectDirs.length > 0) {
     sandbox.docker = {
       binds: projectDirs.map(formatBindMount),
@@ -101,16 +108,17 @@ function buildAgentEntry(
   }
   entry.sandbox = sandbox;
 
-  // All roles get "coding" profile for Bash/exec access (needed for
-  // skills like agent-browser and coding tools). Leaf roles deny
-  // sessions_spawn and sessions_send since they only produce artifacts
-  // and return. Orchestrators deny nothing.
+  // "coding" covers filesystem/runtime/session tools, but not browser.
+  // Explicitly allow browser for the user-facing role so chief_of_staff can
+  // inspect external pages when needed.
   if (role.can_spawn.length > 0) {
-    entry.tools = { profile: "coding" };
+    entry.tools = role.user_facing
+      ? { profile: "coding", allow: ["browser"] }
+      : { profile: "coding" };
   } else if (!role.user_facing) {
     entry.tools = { profile: "coding", deny: ["sessions_spawn", "sessions_send"] };
   } else {
-    entry.tools = { profile: "coding" };
+    entry.tools = { profile: "coding", allow: ["browser"] };
   }
 
   return entry;
