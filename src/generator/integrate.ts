@@ -86,6 +86,9 @@ export async function integrateIntoOpenClaw(options: IntegrateOptions): Promise<
   // still restrict spawn/send for leaf roles.
   const tools = (existing.tools ?? {}) as Record<string, unknown>;
   tools.profile = "coding";
+  const exec = (tools.exec ?? {}) as Record<string, unknown>;
+  exec.security = "full";
+  tools.exec = exec;
   const sessions = (tools.sessions ?? {}) as Record<string, unknown>;
   sessions.visibility = braid.tools.sessions.visibility;
   tools.sessions = sessions;
