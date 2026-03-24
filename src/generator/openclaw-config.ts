@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import type { BraidManifest, RoleConfig, RoleModel } from "../manifest/types.js";
+import type { BraidManifest, RoleConfig, RoleModel, SandboxMountConfig } from "../manifest/types.js";
 
 export type ChannelBindingInput = {
   channel: string;
@@ -24,7 +24,7 @@ type AgentEntry = {
   model?: string;
   identity: { name: string };
   subagents?: { allowAgents?: string[] };
-  sandbox?: { mode: string; workspaceAccess: string };
+  sandbox?: { mode: string; workspaceAccess: string; docker?: { binds: string[] } };
   tools?: { profile?: string; deny?: string[] };
 };
 
@@ -62,11 +62,16 @@ function resolveModelString(model?: RoleModel): string | undefined {
   return model.primary;
 }
 
+function formatBindMount(mount: SandboxMountConfig): string {
+  return `${mount.host_path}:${mount.container_path}:${mount.mode}`;
+}
+
 function buildAgentEntry(
   roleId: string,
   role: RoleConfig,
   workspacesDir: string,
   isDefault: boolean,
+  projectDirs: SandboxMountConfig[],
 ): AgentEntry {
   const entry: AgentEntry = {
     id: roleId,
@@ -84,10 +89,14 @@ function buildAgentEntry(
     entry.subagents = { allowAgents: [...role.can_spawn] };
   }
 
-  entry.sandbox = {
+  const sandbox: AgentEntry["sandbox"] = {
     mode: role.user_facing ? "non-main" : "all",
     workspaceAccess: "rw",
   };
+  if (projectDirs.length > 0) {
+    sandbox.docker = { binds: projectDirs.map(formatBindMount) };
+  }
+  entry.sandbox = sandbox;
 
   // Orchestrators need sessions_spawn (requires "coding" profile) and
   // sessions_send for multi-round discussion with spawned workers.
@@ -114,9 +123,10 @@ export function generateOpenClawConfig(
 
   const workspacesDir = resolvePath(manifest.generation.targets.openclaw.output_workspaces_dir);
   const userFacingRole = manifest.generation.targets.openclaw.user_binding_role;
+  const projectDirs = manifest.sandbox?.project_dirs ?? [];
 
   const agents: AgentEntry[] = Object.entries(manifest.roles).map(([roleId, role]) =>
-    buildAgentEntry(roleId, role, workspacesDir, roleId === userFacingRole),
+    buildAgentEntry(roleId, role, workspacesDir, roleId === userFacingRole, projectDirs),
   );
 
   const binding: BindingEntry = {

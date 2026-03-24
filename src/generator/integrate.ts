@@ -88,6 +88,12 @@ export async function integrateIntoOpenClaw(options: IntegrateOptions): Promise<
   tools.sessions = sessions;
   existing.tools = tools;
 
+  // Remove stale root-level sandbox key if a previous Braid integration added one.
+  // OpenClaw only supports sandbox config per-agent, not at root.
+  if ("sandbox" in existing) {
+    delete existing.sandbox;
+  }
+
   await writeFile(configPath, JSON.stringify(existing, null, 2) + "\n", "utf-8");
 
   return {

@@ -84,6 +84,16 @@ const batonTransferSchema = z.object({
   when: z.string(),
 });
 
+const sandboxMountSchema = z.object({
+  host_path: z.string(),
+  container_path: z.string(),
+  mode: z.enum(["ro", "rw"]),
+});
+
+const sandboxSchema = z.object({
+  project_dirs: z.array(sandboxMountSchema),
+});
+
 const codingAgentSchema = z.object({
   permissions: z.enum(["approve-all", "approve-reads", "deny-all"]),
   command: z.string().optional(),
@@ -165,6 +175,7 @@ const manifestSchema = z.object({
       }),
     }),
   }),
+  sandbox: sandboxSchema.optional(),
   coding: codingSchema.optional(),
 });
 

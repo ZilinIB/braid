@@ -447,6 +447,45 @@ const graphRolesComplete: Check = (manifest, ctx) => {
   return errors;
 };
 
+const sandboxConfigValid: Check = (manifest, ctx) => {
+  const errors: ValidationError[] = [];
+  const sandbox = manifest.sandbox;
+  if (!sandbox) return errors;
+
+  for (let i = 0; i < sandbox.project_dirs.length; i++) {
+    const mount = sandbox.project_dirs[i]!;
+    const base = `sandbox.project_dirs[${i}]`;
+
+    if (!isAbsolute(mount.host_path)) {
+      errors.push({
+        rule: "sandboxConfigValid",
+        path: `${base}.host_path`,
+        message: `Host path "${mount.host_path}" must be absolute`,
+      });
+    }
+    if (!isAbsolute(mount.container_path)) {
+      errors.push({
+        rule: "sandboxConfigValid",
+        path: `${base}.container_path`,
+        message: `Container path "${mount.container_path}" must be absolute`,
+      });
+    }
+
+    const blocked = ["/etc", "/proc", "/sys", "/dev", "/root", "/boot", "/run"];
+    for (const bp of blocked) {
+      if (mount.container_path === bp || mount.container_path.startsWith(bp + "/")) {
+        errors.push({
+          rule: "sandboxConfigValid",
+          path: `${base}.container_path`,
+          message: `Container path "${mount.container_path}" targets a blocked system directory`,
+        });
+      }
+    }
+  }
+
+  return errors;
+};
+
 const codingConfigCoherent: Check = (manifest, ctx) => {
   const errors: ValidationError[] = [];
   const coding = manifest.coding;
@@ -494,6 +533,7 @@ const ALL_CHECKS: Check[] = [
   modeOverridesCoherent,
   artifactPathsSafe,
   graphRolesComplete,
+  sandboxConfigValid,
   codingConfigCoherent,
 ];
 

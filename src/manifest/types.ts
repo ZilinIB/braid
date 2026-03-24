@@ -7,6 +7,7 @@ export type BraidManifest = {
   protocol: ProtocolConfig;
   reporting: ReportingConfig;
   generation: GenerationConfig;
+  sandbox?: SandboxConfig;
   coding?: CodingConfig;
 };
 
@@ -151,6 +152,16 @@ export type DailyReportingConfig = {
   summary_file: string;
   order: string[];
   sections: string[];
+};
+
+export type SandboxMountConfig = {
+  host_path: string;
+  container_path: string;
+  mode: "ro" | "rw";
+};
+
+export type SandboxConfig = {
+  project_dirs: SandboxMountConfig[];
 };
 
 export type GenerationConfig = {

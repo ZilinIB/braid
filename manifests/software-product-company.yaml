@@ -601,6 +601,12 @@ reporting:
       - next_actions
       - metrics
 
+sandbox:
+  project_dirs:
+    - host_path: /home/zilinwang/developer/clawspace
+      container_path: /clawspace
+      mode: rw
+
 coding:
   enabled: true
   default_agent: codex
