@@ -25,7 +25,7 @@ type AgentEntry = {
   identity: { name: string };
   subagents?: { allowAgents?: string[] };
   sandbox?: { mode: string; workspaceAccess: string };
-  tools?: { deny?: string[] };
+  tools?: { profile?: string; deny?: string[] };
 };
 
 type BindingEntry = {
@@ -89,11 +89,16 @@ function buildAgentEntry(
     workspaceAccess: "rw",
   };
 
-  // Leaf roles (no spawn capability) cannot use sessions_send.
-  // Orchestrators (can_spawn > 0) need sessions_send for multi-round
-  // discussion with their spawned workers before artifact production.
-  if (!role.user_facing && role.can_spawn.length === 0) {
-    entry.tools = { deny: ["sessions_send"] };
+  // Orchestrators need sessions_spawn (requires "coding" profile) and
+  // sessions_send for multi-round discussion with spawned workers.
+  // Leaf roles use "messaging" and deny sessions_send since they only
+  // produce artifacts and return.
+  if (role.can_spawn.length > 0) {
+    entry.tools = { profile: "coding" };
+  } else if (!role.user_facing) {
+    entry.tools = { profile: "messaging", deny: ["sessions_send"] };
+  } else {
+    entry.tools = { profile: "messaging" };
   }
 
   return entry;
