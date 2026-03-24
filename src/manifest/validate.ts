@@ -447,6 +447,36 @@ const graphRolesComplete: Check = (manifest, ctx) => {
   return errors;
 };
 
+const codingConfigCoherent: Check = (manifest, ctx) => {
+  const errors: ValidationError[] = [];
+  const coding = manifest.coding;
+  if (!coding) return errors;
+
+  const { roleIds } = ctx;
+
+  // default_agent must exist in agents
+  if (!coding.agents[coding.default_agent]) {
+    errors.push({
+      rule: "codingConfigCoherent",
+      path: "coding.default_agent",
+      message: `Default agent "${coding.default_agent}" is not defined in coding.agents`,
+    });
+  }
+
+  // allowed_roles must reference valid role IDs
+  for (const role of coding.allowed_roles) {
+    if (!roleIds.has(role)) {
+      errors.push({
+        rule: "codingConfigCoherent",
+        path: "coding.allowed_roles",
+        message: `Role "${role}" in allowed_roles does not exist`,
+      });
+    }
+  }
+
+  return errors;
+};
+
 const ALL_CHECKS: Check[] = [
   allRolesExist,
   canSpawnMatchesGraph,
@@ -464,6 +494,7 @@ const ALL_CHECKS: Check[] = [
   modeOverridesCoherent,
   artifactPathsSafe,
   graphRolesComplete,
+  codingConfigCoherent,
 ];
 
 export function validateManifest(manifest: BraidManifest): ValidationResult {

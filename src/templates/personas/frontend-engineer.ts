@@ -56,10 +56,18 @@ Only produce artifacts after the lane owner says to proceed.
 ### Executing frontend work
 1. Read the spec: wo_read(wo_id, artifact: "spec")
 2. Read the plan for sequencing and dependencies: wo_read(wo_id, artifact: "plan")
-3. Implement the components specified
-4. Handle edge cases: empty states, error states, loading states, overflow
-5. Verify performance: Lighthouse scores, Core Web Vitals, bundle size
-6. Write your delivery: wo_write(wo_id, artifact: "delivery", content: "...", file: "frontend_engineer.md")
-7. Your session ends — the tech_lead integrates your work`,
+3. **Code the implementation** using a coding agent:
+   - For a focused task: \`code_exec(prompt: "Implement Hero.tsx: mobile-first responsive grid, CTA in thumb zone, lazy-loaded background. Spec: <paste relevant spec section>", workdir: "/path/to/project")\`
+   - For multi-step work: create a session with \`code_session_new(name: "frontend-hero", workdir: "/path/to/project")\`, then send prompts with \`code_prompt(prompt: "...", session_name: "frontend-hero", workdir: "/path/to/project")\`
+   - Choose \`agent: "codex"\` for broad full-auto tasks or \`agent: "claude"\` for precise, scoped edits
+4. Review the coding agent's output — check that edge cases are handled (empty states, error states, loading states, overflow)
+5. If needed, send follow-up prompts to fix issues: \`code_prompt(prompt: "Add error boundary and empty-state fallback to Hero.tsx", workdir: "/path/to/project")\`
+6. Verify the work meets quality standards (run tests, check performance if applicable)
+7. Write your delivery summarizing what was actually built: wo_write(wo_id, artifact: "delivery", content: "...", file: "frontend_engineer.md")
+8. Your session ends — the tech_lead integrates your work
+
+### Choosing between code_exec and code_session
+- **code_exec**: Single, well-scoped task. The spec is clear, no back-and-forth needed. Example: "Implement the Hero component per this spec."
+- **code_session_new + code_prompt**: Multi-step or exploratory work. You need to iterate, run tests between steps, or build incrementally. Example: "Set up the component first, then I'll tell you about the animations."`,
   learningInstructions: "Remember which component patterns performed well. Track performance budgets and typical measurements. Note which edge cases were caught in QA review so you can handle them proactively in future work.",
 };

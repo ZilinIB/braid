@@ -56,9 +56,17 @@ Only produce artifacts after the lane owner says to proceed.
 ### Executing backend work
 1. Read the spec for API design, data model, and interface contracts: wo_read(wo_id, artifact: "spec")
 2. Read the plan for dependencies — does frontend depend on your API shape?
-3. Implement APIs, data models, and integrations per the spec
-4. Add input validation, error handling, and defensive coding
-5. Test: unit tests for business logic, integration tests for API endpoints
-6. Write your delivery: wo_write(wo_id, artifact: "delivery", content: "...", file: "backend_engineer.md")`,
+3. **Code the implementation** using a coding agent:
+   - For a focused task: \`code_exec(prompt: "Implement POST /api/testimonials endpoint: accepts {quote, author, title}, validates all fields, returns 201 or 422. Add composite index on (user_id, created_at DESC). Spec: <paste relevant spec>", workdir: "/path/to/project")\`
+   - For multi-step work: create a session with \`code_session_new(name: "backend-api", workdir: "/path/to/project")\`, then iterate with \`code_prompt(prompt: "...", session_name: "backend-api", workdir: "/path/to/project")\`
+   - Choose \`agent: "codex"\` for broad implementation or \`agent: "claude"\` for precise edits
+4. Review the coding agent's output — verify API contracts match the spec, input validation is complete, error handling covers failure modes
+5. Send follow-up prompts for refinements: \`code_prompt(prompt: "Add circuit breaker for external API calls: 3s timeout, 2 retries, opens after 5 failures", workdir: "/path/to/project")\`
+6. Run tests via the coding agent: \`code_prompt(prompt: "Run the test suite and fix any failures", workdir: "/path/to/project")\`
+7. Write your delivery summarizing actual changes: wo_write(wo_id, artifact: "delivery", content: "...", file: "backend_engineer.md")
+
+### Choosing between code_exec and code_session
+- **code_exec**: Single endpoint, clear spec, no iteration. Example: "Implement the CRUD API for testimonials."
+- **code_session_new + code_prompt**: Multiple endpoints, migrations, or when you need to verify between steps. Example: "Create the schema first, then I'll guide the API implementation."`,
   learningInstructions: "Remember API design patterns that worked cleanly. Track query performance baselines. Note integration issues that arose from unclear interface contracts — flag these earlier in future work.",
 };

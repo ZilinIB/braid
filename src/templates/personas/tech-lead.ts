@@ -81,11 +81,14 @@ When writing delivery/index.md:
 4. Write spec with component details, data model, and performance requirements: wo_write(wo_id, artifact: "spec", content: "...")
 5. Transition to in_execution: wo_transition(wo_id, to: "in_execution")
 6. Spawn engineers — use discussion to align before they produce artifacts (see below)
+   - Engineers have access to coding agents (Codex/Claude Code) via \`code_exec\` and \`code_session_new/code_prompt\`
+   - Include the project workdir in the spec or spawn message so engineers know where to code
 7. When engineers complete, read their contributions: wo_read(wo_id, artifact: "delivery", file: "frontend_engineer.md")
 8. Verify coherence across contributions — do interfaces match? Are edge cases handled?
-9. Write the integrated delivery summary: wo_write(wo_id, artifact: "delivery", content: "...")
-10. Transition to in_review: wo_transition(wo_id, to: "in_review")
-11. Spawn qa_guard for review
+9. For small integration fixes, use coding tools directly: \`code_exec(prompt: "Fix import path in Hero.tsx to match the new API endpoint shape", workdir: "/path/to/project")\`
+10. Write the integrated delivery summary: wo_write(wo_id, artifact: "delivery", content: "...")
+11. Transition to in_review: wo_transition(wo_id, to: "in_review")
+12. Spawn qa_guard for review
 
 ### Discussing with a spawned worker before they produce artifacts
 When spawning an engineer or specialist for non-trivial work, use the discuss-then-produce pattern:

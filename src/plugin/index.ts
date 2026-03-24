@@ -27,6 +27,11 @@ import {
   reportWrite, reportRead,
   type ToolContext,
 } from "./tools/workflow-tools.js";
+import {
+  codeExec, codeSessionNew, codePrompt,
+  codeStatus, codeLog, codeCancel,
+  type CodingToolContext,
+} from "./tools/coding-tools.js";
 
 export type WorkflowRuntime = {
   manifest: BraidManifest;
@@ -58,6 +63,10 @@ export function createWorkflowRuntime(
     return { callingRole: roleId, manifest, woStore, reportStore, artifactPathMap };
   }
 
+  function makeCodingCtx(roleId: string): CodingToolContext {
+    return { callingRole: roleId, manifest };
+  }
+
   async function callTool(
     roleId: string,
     toolName: string,
@@ -85,6 +94,18 @@ export function createWorkflowRuntime(
         return reportWrite(ctx, args as Parameters<typeof reportWrite>[1]);
       case "report_read":
         return reportRead(ctx, args as Parameters<typeof reportRead>[1]);
+      case "code_exec":
+        return codeExec(makeCodingCtx(roleId), args as Parameters<typeof codeExec>[1]);
+      case "code_session_new":
+        return codeSessionNew(makeCodingCtx(roleId), args as Parameters<typeof codeSessionNew>[1]);
+      case "code_prompt":
+        return codePrompt(makeCodingCtx(roleId), args as Parameters<typeof codePrompt>[1]);
+      case "code_status":
+        return codeStatus(makeCodingCtx(roleId), args as Parameters<typeof codeStatus>[1]);
+      case "code_log":
+        return codeLog(makeCodingCtx(roleId), args as Parameters<typeof codeLog>[1]);
+      case "code_cancel":
+        return codeCancel(makeCodingCtx(roleId), args as Parameters<typeof codeCancel>[1]);
       default:
         return `Error: unknown tool "${toolName}"`;
     }
@@ -234,6 +255,93 @@ export const TOOL_DEFINITIONS = [
       properties: {
         role: { type: "string", description: "Role ID to read report for" },
         date: { type: "string", description: "Date in YYYY-MM-DD format (defaults to today)" },
+      },
+      required: [],
+    },
+  },
+] as const;
+
+/**
+ * Coding tool definitions for ACPX integration.
+ * Only registered when coding is enabled in the manifest.
+ */
+export const CODING_TOOL_DEFINITIONS = [
+  {
+    name: "code_exec",
+    description: "Execute a one-shot coding task via a coding agent (Codex or Claude Code). The agent runs in the specified workdir, executes the prompt, and returns structured results.",
+    parameters: {
+      type: "object" as const,
+      properties: {
+        prompt: { type: "string", description: "The coding task to execute (e.g. 'implement the Hero component per this spec: ...')" },
+        agent: { type: "string", description: "Coding agent to use: codex or claude (defaults to manifest default)" },
+        workdir: { type: "string", description: "Working directory for the coding agent (the project repo path)" },
+        timeout: { type: "number", description: "Timeout in seconds (default: 600)" },
+      },
+      required: ["prompt"],
+    },
+  },
+  {
+    name: "code_session_new",
+    description: "Create a persistent coding session for multi-step work. Use this when a task requires multiple prompts or iterative development.",
+    parameters: {
+      type: "object" as const,
+      properties: {
+        agent: { type: "string", description: "Coding agent: codex or claude" },
+        name: { type: "string", description: "Session name for identification (e.g. 'api-impl', 'frontend-hero')" },
+        workdir: { type: "string", description: "Working directory for the coding agent" },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "code_prompt",
+    description: "Send a prompt to an existing coding session. Use after code_session_new for follow-up instructions.",
+    parameters: {
+      type: "object" as const,
+      properties: {
+        prompt: { type: "string", description: "The follow-up coding instruction" },
+        agent: { type: "string", description: "Coding agent: codex or claude" },
+        session_name: { type: "string", description: "Target session name" },
+        workdir: { type: "string", description: "Working directory (if different from session creation)" },
+        timeout: { type: "number", description: "Timeout in seconds (default: 600)" },
+      },
+      required: ["prompt"],
+    },
+  },
+  {
+    name: "code_status",
+    description: "Check the status of the current coding session (running, idle, dead).",
+    parameters: {
+      type: "object" as const,
+      properties: {
+        agent: { type: "string", description: "Coding agent: codex or claude" },
+        workdir: { type: "string", description: "Working directory" },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "code_log",
+    description: "Read the turn history of a coding session to see what the coding agent did.",
+    parameters: {
+      type: "object" as const,
+      properties: {
+        agent: { type: "string", description: "Coding agent: codex or claude" },
+        session_name: { type: "string", description: "Session name" },
+        workdir: { type: "string", description: "Working directory" },
+        limit: { type: "number", description: "Max number of turns to return (default: all)" },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "code_cancel",
+    description: "Cancel the currently running coding operation. Sends a cooperative cancel to the coding agent.",
+    parameters: {
+      type: "object" as const,
+      properties: {
+        agent: { type: "string", description: "Coding agent: codex or claude" },
+        workdir: { type: "string", description: "Working directory" },
       },
       required: [],
     },

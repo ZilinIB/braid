@@ -14,7 +14,7 @@
 
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { loadManifestSync, createWorkflowRuntime, TOOL_DEFINITIONS } from "../index.js";
+import { loadManifestSync, createWorkflowRuntime, TOOL_DEFINITIONS, CODING_TOOL_DEFINITIONS } from "../index.js";
 
 /**
  * Plugin registration function.
@@ -37,7 +37,7 @@ export function register(api: {
   const manifest = loadManifestSync(manifestPath);
   const runtime = createWorkflowRuntime(manifest, baseDir);
 
-  // Register each tool
+  // Register workflow tools
   for (const def of TOOL_DEFINITIONS) {
     const toolName = def.name;
     api.registerTool(
@@ -52,6 +52,25 @@ export function register(api: {
       }),
       { name: toolName },
     );
+  }
+
+  // Register coding tools when coding is enabled
+  if (manifest.coding?.enabled) {
+    for (const def of CODING_TOOL_DEFINITIONS) {
+      const toolName = def.name;
+      api.registerTool(
+        (ctx: { agentId?: string }) => ({
+          name: toolName,
+          description: def.description,
+          parameters: def.parameters,
+          async execute(_toolCallId: string, args: Record<string, unknown>) {
+            const roleId = ctx.agentId ?? "unknown";
+            return runtime.callTool(roleId, toolName, args);
+          },
+        }),
+        { name: toolName },
+      );
+    }
   }
 
   // Context injection: give each agent awareness of active work orders

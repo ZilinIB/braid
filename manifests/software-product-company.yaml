@@ -601,6 +601,20 @@ reporting:
       - next_actions
       - metrics
 
+coding:
+  enabled: true
+  default_agent: codex
+  agents:
+    codex:
+      permissions: approve-all
+    claude:
+      permissions: approve-all
+  allowed_roles:
+    - tech_lead
+    - frontend_engineer
+    - backend_engineer
+    - platform_engineer
+
 generation:
   targets:
     openclaw:

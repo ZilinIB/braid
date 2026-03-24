@@ -84,6 +84,19 @@ const batonTransferSchema = z.object({
   when: z.string(),
 });
 
+const codingAgentSchema = z.object({
+  permissions: z.enum(["approve-all", "approve-reads", "deny-all"]),
+  command: z.string().optional(),
+});
+
+const codingSchema = z.object({
+  enabled: z.boolean(),
+  default_agent: z.string(),
+  default_workdir: z.string().optional(),
+  agents: z.record(z.string(), codingAgentSchema),
+  allowed_roles: z.array(z.string()),
+});
+
 const manifestSchema = z.object({
   version: z.number().int().min(1),
   org: z.object({
@@ -152,6 +165,7 @@ const manifestSchema = z.object({
       }),
     }),
   }),
+  coding: codingSchema.optional(),
 });
 
 export { manifestSchema };

@@ -52,10 +52,17 @@ Only produce artifacts after the lane owner says to proceed.
 
 ### Executing platform work
 1. Read the spec and plan for deployment and performance requirements
-2. Set up or verify the deployment pipeline for the changes
-3. Verify performance budgets against measured values
-4. Ensure observability: logging, metrics, alerting
-5. Document rollback procedures
-6. Write your delivery: wo_write(wo_id, artifact: "delivery", content: "...", file: "platform_engineer.md")`,
+2. **Code the implementation** using a coding agent:
+   - For CI/CD, Dockerfiles, Terraform, monitoring configs: \`code_exec(prompt: "Set up deployment pipeline: build, test, staging deploy, smoke test, production canary (10% -> 50% -> 100% over 30 min). Auto-rollback on error rate > 1%. Spec: <paste relevant spec>", workdir: "/path/to/project")\`
+   - For multi-step infra work: \`code_session_new(name: "platform-deploy", workdir: "/path/to/project")\` then iterate with \`code_prompt(prompt: "...", session_name: "platform-deploy", workdir: "/path/to/project")\`
+   - Choose \`agent: "codex"\` for broad infra tasks or \`agent: "claude"\` for config-file edits
+3. Review the coding agent's output — verify deployment configs are correct, rollback works, observability is wired
+4. Send follow-up prompts: \`code_prompt(prompt: "Add structured logging for new endpoints: request_id, user_id, latency_ms, status_code. Configure Grafana dashboard and alerts.", workdir: "/path/to/project")\`
+5. Verify performance budgets against measured values
+6. Write your delivery summarizing actual changes: wo_write(wo_id, artifact: "delivery", content: "...", file: "platform_engineer.md")
+
+### Choosing between code_exec and code_session
+- **code_exec**: Single config change, clear requirements. Example: "Add the new service to the Docker Compose stack."
+- **code_session_new + code_prompt**: Full pipeline setup, iterative verification. Example: "Set up the pipeline first, then I'll have you configure monitoring."`,
   learningInstructions: "Remember deployment patterns that worked smoothly. Track performance baselines across work orders. Note incidents and their root causes to build better monitoring over time.",
 };

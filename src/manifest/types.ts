@@ -7,6 +7,7 @@ export type BraidManifest = {
   protocol: ProtocolConfig;
   reporting: ReportingConfig;
   generation: GenerationConfig;
+  coding?: CodingConfig;
 };
 
 export type OrgConfig = {
@@ -163,6 +164,19 @@ export type OpenClawTargetConfig = {
   user_binding_role: string;
   output_config: string;
   output_workspaces_dir: string;
+};
+
+export type CodingConfig = {
+  enabled: boolean;
+  default_agent: string;
+  default_workdir?: string;
+  agents: Record<string, CodingAgentConfig>;
+  allowed_roles: string[];
+};
+
+export type CodingAgentConfig = {
+  permissions: "approve-all" | "approve-reads" | "deny-all";
+  command?: string;
 };
 
 export type ValidationError = {

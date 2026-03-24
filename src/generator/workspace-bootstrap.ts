@@ -203,6 +203,69 @@ function generateSoul(manifest: BraidManifest, roleId: string, role: RoleConfig)
 
 // ── AGENTS.md ──
 
+function generateCodingToolInstructions(manifest: BraidManifest): string {
+  const coding = manifest.coding!;
+  const agentNames = Object.keys(coding.agents);
+  const lines: string[] = [
+    "## Coding Tools",
+    "",
+    `You have access to coding agents (${agentNames.join(", ")}) via ACPX. These let you delegate actual code implementation to autonomous coding agents.`,
+    `Default agent: **${coding.default_agent}**`,
+    "",
+    "### `code_exec`",
+    "Execute a one-shot coding task. Best for well-scoped, single-prompt tasks.",
+    "```",
+    'code_exec(prompt: "Implement the Hero component with responsive layout...", workdir: "/path/to/project")',
+    "```",
+    "Optional: `agent` (codex or claude), `timeout` (seconds).",
+    "Returns: structured summary of what the coding agent did (tool calls with status, final agent response text).",
+    "",
+    "### `code_session_new`",
+    "Create a persistent coding session for multi-step work.",
+    "```",
+    'code_session_new(name: "frontend-hero", workdir: "/path/to/project")',
+    "```",
+    "",
+    "### `code_prompt`",
+    "Send a follow-up prompt to an existing coding session.",
+    "```",
+    'code_prompt(prompt: "Now add error boundaries and loading states", session_name: "frontend-hero", workdir: "/path/to/project")',
+    "```",
+    "",
+    "### `code_status`",
+    "Check if the coding agent is running, idle, or dead.",
+    "",
+    "### `code_log`",
+    "Read the turn history of a coding session.",
+    "",
+    "### `code_cancel`",
+    "Cancel the currently running coding operation.",
+    "",
+    "### When to use which agent",
+    "",
+  ];
+
+  for (const [name, config] of Object.entries(coding.agents)) {
+    const permDesc = config.permissions === "approve-all" ? "full auto-approval (reads + writes + commands)"
+      : config.permissions === "approve-reads" ? "auto-approve reads only"
+      : "deny all tool requests";
+    lines.push(`- **${name}**: ${permDesc}${config.command ? ` (custom command: ${config.command})` : ""}`);
+  }
+
+  lines.push(
+    "",
+    "### Best practices",
+    "- Include the relevant spec section in your prompt — the coding agent has no access to work-order artifacts",
+    "- Use `code_exec` for focused tasks where the spec is clear and complete",
+    "- Use `code_session_new` + `code_prompt` for iterative work or when you need to verify between steps",
+    "- Always review the coding agent's output before writing your delivery artifact",
+    "- Your delivery should describe what was actually built, referencing real files and changes",
+    "",
+  );
+
+  return lines.join("\n");
+}
+
 function generateToolInstructions(manifest: BraidManifest, roleId: string, role: RoleConfig): string {
   const lines: string[] = ["## Workflow Tools", ""];
   const dispatchRole = manifest.runtime.execution.dispatch_role;
@@ -343,6 +406,11 @@ function generateToolInstructions(manifest: BraidManifest, roleId: string, role:
       `High and critical severity immediately notify ${dispatchRole}.`,
       "",
     );
+  }
+
+  // Coding tools — only for authorized roles
+  if (manifest.coding?.enabled && manifest.coding.allowed_roles.includes(roleId)) {
+    lines.push(generateCodingToolInstructions(manifest));
   }
 
   // report_write, report_read
