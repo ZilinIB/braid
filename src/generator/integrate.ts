@@ -81,8 +81,11 @@ export async function integrateIntoOpenClaw(options: IntegrateOptions): Promise<
   plugins.load = load;
   existing.plugins = plugins;
 
-  // Patch tools.sessions
+  // Patch tools: set global profile to "coding" so all agents have exec/Bash
+  // access (needed for skills like agent-browser). Per-agent deny lists
+  // still restrict spawn/send for leaf roles.
   const tools = (existing.tools ?? {}) as Record<string, unknown>;
+  tools.profile = "coding";
   const sessions = (tools.sessions ?? {}) as Record<string, unknown>;
   sessions.visibility = braid.tools.sessions.visibility;
   tools.sessions = sessions;
