@@ -101,16 +101,16 @@ function buildAgentEntry(
   }
   entry.sandbox = sandbox;
 
-  // Orchestrators need sessions_spawn (requires "coding" profile) and
-  // sessions_send for multi-round discussion with spawned workers.
-  // Leaf roles use "messaging" and deny sessions_send since they only
-  // produce artifacts and return.
+  // All roles get "coding" profile for Bash/exec access (needed for
+  // skills like agent-browser and coding tools). Leaf roles deny
+  // sessions_spawn and sessions_send since they only produce artifacts
+  // and return. Orchestrators deny nothing.
   if (role.can_spawn.length > 0) {
     entry.tools = { profile: "coding" };
   } else if (!role.user_facing) {
-    entry.tools = { profile: "messaging", deny: ["sessions_send"] };
+    entry.tools = { profile: "coding", deny: ["sessions_spawn", "sessions_send"] };
   } else {
-    entry.tools = { profile: "messaging" };
+    entry.tools = { profile: "coding" };
   }
 
   return entry;
