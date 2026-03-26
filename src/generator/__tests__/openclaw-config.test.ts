@@ -76,6 +76,20 @@ describe("generateOpenClawConfig", () => {
     expect(cos?.tools?.deny).toBeUndefined();
   });
 
+  it("allows browser for the user-facing role", async () => {
+    const manifest = await loadManifest();
+    const config = generateOpenClawConfig(manifest, defaultBinding);
+    const cos = config.agents.list.find((a) => a.id === "chief_of_staff");
+    expect(cos?.tools?.alsoAllow).toContain("browser");
+  });
+
+  it("allows the user-facing role to target the host browser", async () => {
+    const manifest = await loadManifest();
+    const config = generateOpenClawConfig(manifest, defaultBinding);
+    const cos = config.agents.list.find((a) => a.id === "chief_of_staff");
+    expect(cos?.sandbox?.browser?.allowHostControl).toBe(true);
+  });
+
   it("creates binding for chief_of_staff", async () => {
     const manifest = await loadManifest();
     const config = generateOpenClawConfig(manifest, defaultBinding);

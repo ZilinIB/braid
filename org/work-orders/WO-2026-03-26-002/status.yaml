@@ -1,0 +1,25 @@
+id: WO-2026-03-26-002
+title: High-level review of core repo stingray-mono
+type: research
+state: briefed
+priority: normal
+owner: chief_of_staff
+lane_owner: product_lead
+review_policy: optional
+severity: normal
+needs_human_attention: false
+opened_at: 2026-03-26T07:16:41.284Z
+updated_at: 2026-03-26T07:17:19.997Z
+current_lane: research
+current_role: chief_of_staff
+approved: false
+blocked_by: []
+baton_history: []
+artifacts:
+  request: request.md
+  brief: brief.md
+  plan: plan.md
+  spec: spec/index.md
+  delivery: delivery/index.md
+  review: review/index.md
+  status: status.yaml

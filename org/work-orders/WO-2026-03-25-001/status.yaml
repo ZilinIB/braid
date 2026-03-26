@@ -1,0 +1,25 @@
+id: WO-2026-03-25-001
+title: High-level review of stingray-mono core company repository
+type: research
+state: in_execution
+priority: normal
+owner: chief_of_staff
+lane_owner: product_lead
+review_policy: optional
+severity: normal
+needs_human_attention: false
+opened_at: 2026-03-25T20:06:10.307Z
+updated_at: 2026-03-25T20:06:56.128Z
+current_lane: research
+current_role: chief_of_staff
+approved: false
+blocked_by: []
+baton_history: []
+artifacts:
+  request: request.md
+  brief: brief.md
+  plan: plan.md
+  spec: spec/index.md
+  delivery: delivery/index.md
+  review: review/index.md
+  status: status.yaml
