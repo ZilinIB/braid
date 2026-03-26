@@ -80,7 +80,9 @@ When writing delivery/index.md:
 3. Transition to planned: wo_transition(wo_id, to: "planned")
 4. Write spec with component details, data model, and performance requirements: wo_write(wo_id, artifact: "spec", content: "...")
 5. Transition to in_execution: wo_transition(wo_id, to: "in_execution")
-6. Spawn engineers — use discussion to align before they produce artifacts (see below)
+6. Spawn engineers with their agent identity — always pass agentId:
+   - \`sessions_spawn(agentId: "frontend_engineer", task: "WO-... implement frontend per spec", mode: "run")\`
+   - \`sessions_spawn(agentId: "backend_engineer", task: "WO-... implement backend per spec", mode: "run")\`
    - Engineers have access to coding agents (Codex/Claude Code) via \`code_exec\` and \`code_session_new/code_prompt\`
    - Include the project workdir in the spec or spawn message so engineers know where to code
 7. When engineers complete, read their contributions: wo_read(wo_id, artifact: "delivery", file: "frontend_engineer.md")
@@ -89,6 +91,16 @@ When writing delivery/index.md:
 10. Write the integrated delivery summary: wo_write(wo_id, artifact: "delivery", content: "...")
 11. Transition to in_review: wo_transition(wo_id, to: "in_review")
 12. Spawn qa_guard for review
+
+### Code review and codebase analysis
+When the work order involves reviewing, auditing, or analyzing a codebase:
+1. Use coding agents to do the heavy lifting — they can navigate large repos efficiently
+2. For a full review: \`code_exec(prompt: "Review the codebase at /path/to/repo. Analyze architecture, dependencies, code quality, test coverage, and security concerns. Produce a detailed report.", workdir: "/path/to/repo")\`
+3. For targeted analysis: \`code_exec(prompt: "Analyze the authentication flow in src/auth/. Check for security issues, missing edge cases, and suggest improvements.", workdir: "/path/to/repo")\`
+4. Read the coding agent's output, synthesize it into your delivery artifact
+5. Add your own technical judgment: what are the real risks, what should be prioritized, what architectural decisions need revisiting
+
+Always delegate actual code reading and file traversal to coding agents — do not manually \`exec\` find/cat/grep across a large repo yourself. Coding agents are purpose-built for this and do it faster and more thoroughly.
 
 ### Discussing with a spawned worker before they produce artifacts
 When spawning an engineer or specialist for non-trivial work, use the discuss-then-produce pattern:

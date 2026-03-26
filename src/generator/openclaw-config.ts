@@ -24,8 +24,8 @@ type AgentEntry = {
   model?: string;
   identity: { name: string };
   subagents?: { allowAgents?: string[] };
-  sandbox?: { mode: string; workspaceAccess: string; browser?: { allowHostControl: boolean }; docker?: { binds: string[]; dangerouslyAllowExternalBindSources?: boolean } };
-  tools?: { profile?: string; allow?: string[]; deny?: string[] };
+  sandbox?: { mode: string; workspaceAccess: string; browser?: { allowHostControl: boolean }; docker?: { binds: string[]; dangerouslyAllowExternalBindSources?: boolean; env?: Record<string, string> } };
+  tools?: { profile?: string; alsoAllow?: string[]; deny?: string[] };
 };
 
 type BindingEntry = {
@@ -89,36 +89,27 @@ function buildAgentEntry(
     entry.subagents = { allowAgents: [...role.can_spawn] };
   }
 
-  const sandbox: AgentEntry["sandbox"] = {
-    mode: role.user_facing ? "non-main" : "all",
-    workspaceAccess: "rw",
-  };
-  if (role.user_facing) {
-    sandbox.browser = {
-      // User-facing intake sessions need host-browser access for routine web
-      // review tasks; default sandbox-browser routing is a poor fit here.
-      allowHostControl: true,
-    };
-  }
-  if (projectDirs.length > 0) {
-    sandbox.docker = {
-      binds: projectDirs.map(formatBindMount),
-      dangerouslyAllowExternalBindSources: true,
-    };
-  }
-  entry.sandbox = sandbox;
+  // No sandbox — agents run directly on the host where agent-browser,
+  // Chrome, node, and all other tools are already installed.
+  entry.sandbox = { mode: "off", workspaceAccess: "rw" };
 
-  // "coding" covers filesystem/runtime/session tools, but not browser.
-  // Explicitly allow browser for the user-facing role so chief_of_staff can
-  // inspect external pages when needed.
+  // "coding" profile covers filesystem/runtime/session tools but uses an
+  // allowlist that excludes browser and plugin tools. Use alsoAllow to add
+  // browser + all braid-workflow plugin tools (wo_*, report_*, code_*).
+  const alsoAllow = [
+    "browser",
+    "wo_open", "wo_status", "wo_read", "wo_write", "wo_list",
+    "wo_transition", "wo_baton", "wo_escalate",
+    "report_write", "report_read",
+    "code_exec", "code_session_new", "code_prompt",
+    "code_status", "code_log", "code_cancel",
+  ];
   if (role.can_spawn.length > 0) {
-    entry.tools = role.user_facing
-      ? { profile: "coding", allow: ["browser"] }
-      : { profile: "coding" };
+    entry.tools = { profile: "coding", alsoAllow };
   } else if (!role.user_facing) {
-    entry.tools = { profile: "coding", deny: ["sessions_spawn", "sessions_send"] };
+    entry.tools = { profile: "coding", deny: ["sessions_spawn", "sessions_send"], alsoAllow };
   } else {
-    entry.tools = { profile: "coding", allow: ["browser"] };
+    entry.tools = { profile: "coding", alsoAllow };
   }
 
   return entry;

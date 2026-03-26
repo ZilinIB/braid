@@ -466,12 +466,53 @@ function generateAgents(manifest: BraidManifest, roleId: string, role: RoleConfi
     "",
   ];
 
+  if (role.web_access || role.user_facing) {
+    lines.push(
+      "## Web Access",
+      "",
+      "You have web browsing capability via the `agent-browser` CLI.",
+      "When you need to open a URL or inspect a webpage, use these Bash commands:",
+      "",
+      "```bash",
+      "# Open a URL and wait for it to load",
+      "agent-browser open <url> && agent-browser wait --load networkidle",
+      "",
+      "# Get the full page text",
+      "agent-browser get text body",
+      "",
+      "# Or get an interactive snapshot with element refs",
+      "agent-browser snapshot -i",
+      "",
+      "# Close when done",
+      "agent-browser close",
+      "```",
+      "",
+      "Do not claim browser access is unavailable. You can access any URL using these commands.",
+      "If you need to interact with page elements, use `agent-browser snapshot -i` to discover refs (@e1, @e2, etc.), then `agent-browser click @e1`, `agent-browser fill @e2 \"text\"`, etc.",
+      "",
+    );
+  }
+
+  if (role.user_facing) {
+    lines.push(
+      "Do not emit an empty `[[reply_to_current]]` final answer. If you are still working, keep the update in commentary and wait to send a substantive final answer.",
+      "",
+    );
+  }
+
   // Delegation
   lines.push("## Delegation", "");
   if (role.can_spawn.length > 0) {
     lines.push(
       `You may spawn these roles: ${role.can_spawn.join(", ")}`,
-      "Use `sessions_spawn` to delegate work to them. They will produce artifacts and return.",
+      "",
+      "**CRITICAL**: Always pass `agentId` when spawning a role so it runs with its own identity, workspace, and artifact ownership.",
+      "Example:",
+      "```",
+      `sessions_spawn(agentId: "tech_lead", task: "...", mode: "run")`,
+      "```",
+      "",
+      "Without `agentId`, the spawned session inherits YOUR identity and cannot write artifacts it owns.",
       "",
     );
   } else {

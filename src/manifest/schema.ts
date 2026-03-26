@@ -71,6 +71,7 @@ const roleSchema = z.object({
   user_facing: z.boolean(),
   session_mode: z.enum(["persistent", "spawned"]),
   authority: z.string(),
+  web_access: z.boolean().optional(),
   owns: ownsSchema,
   can_author: canAuthorSchema.optional(),
   can_spawn: z.array(z.string()),

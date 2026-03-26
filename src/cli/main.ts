@@ -179,7 +179,7 @@ addChannelOptions(
     absolutePaths: true,
   });
 
-  const pluginPath = resolve("src/plugin/openclaw");
+  const pluginPath = resolve("dist/plugin/openclaw");
 
   const result = await integrateIntoOpenClaw({
     openclawConfigPath: opts.openclawConfig,

@@ -51,6 +51,8 @@ export type RoleConfig = {
   user_facing: boolean;
   session_mode: "persistent" | "spawned";
   authority: string;
+  /** Whether this role needs web browsing access (URLs, pages, research). */
+  web_access?: boolean;
   owns: OwnsConfig;
   can_author?: CanAuthorConfig;
   can_spawn: string[];
