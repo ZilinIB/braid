@@ -1,0 +1,96 @@
+#!/bin/bash
+# Mixpanel analytics CLI wrapper
+# Usage: mixpanel-analytics <command> [options]
+
+SA_USER="Stan-OC.663d4e.mp-service-account"
+SA_SECRET="ty8Hx6oXlCEvohkvWWCNVxexXIuuKetF"
+PROJECT_ID="3991281"
+BASE="https://mixpanel.com/api/2.0"
+AUTH="-u $SA_USER:$SA_SECRET"
+
+# Date helpers
+today=$(date -u +%Y-%m-%d)
+days_ago() { date -u -d "$1 days ago" +%Y-%m-%d 2>/dev/null || date -u -v-${1}d +%Y-%m-%d; }
+
+case "$1" in
+  events)
+    # Usage: mixpanel-analytics events <event_name> [days] [unit]
+    EVENT="${2:-page_view}"
+    DAYS="${3:-30}"
+    UNIT="${4:-day}"
+    FROM=$(days_ago "$DAYS")
+    curl -s "$BASE/events?project_id=$PROJECT_ID&type=general&unit=$UNIT&interval=$DAYS&event=%5B%22$EVENT%22%5D" $AUTH
+    ;;
+  event-list)
+    curl -s "$BASE/events/names?project_id=$PROJECT_ID&type=general&limit=100" $AUTH
+    ;;
+  top-events)
+    # Usage: mixpanel-analytics top-events [days]
+    DAYS="${2:-30}"
+    UNIT="day"
+    curl -s "$BASE/events/top?project_id=$PROJECT_ID&type=general&limit=20&interval=$DAYS&unit=$UNIT" $AUTH
+    ;;
+  page-views)
+    # Usage: mixpanel-analytics page-views [days]
+    DAYS="${2:-30}"
+    curl -s "$BASE/events?project_id=$PROJECT_ID&type=general&unit=day&interval=$DAYS&event=%5B%22%24mp_web_page_view%22%5D" $AUTH
+    ;;
+  signups)
+    DAYS="${2:-30}"
+    curl -s "$BASE/events?project_id=$PROJECT_ID&type=general&unit=day&interval=$DAYS&event=%5B%22onboarding_completed%22%5D" $AUTH
+    ;;
+  chat-usage)
+    DAYS="${2:-30}"
+    curl -s "$BASE/events?project_id=$PROJECT_ID&type=general&unit=day&interval=$DAYS&event=%5B%22chat_message_sent%22%2C%22chat_started%22%2C%22chat_response_completed%22%5D" $AUTH
+    ;;
+  logins)
+    DAYS="${2:-30}"
+    curl -s "$BASE/events?project_id=$PROJECT_ID&type=general&unit=day&interval=$DAYS&event=%5B%22login_success%22%5D" $AUTH
+    ;;
+  funnel)
+    # Usage: mixpanel-analytics funnel [days]
+    # Guest → Onboarding → Chat
+    DAYS="${2:-30}"
+    FROM=$(days_ago "$DAYS")
+    echo '{"events": ["app_arrival","onboarding_started","onboarding_completed","chat_started","chat_message_sent"]}'
+    for evt in app_arrival onboarding_started onboarding_completed chat_started chat_message_sent; do
+      echo -n "\"$evt\": "
+      curl -s "$BASE/events?project_id=$PROJECT_ID&type=general&unit=month&interval=1&event=%5B%22$evt%22%5D" $AUTH | python3 -c "import json,sys; d=json.load(sys.stdin); vals=list(list(d['data']['values'].values())[0].values()); print(sum(vals))" 2>/dev/null
+    done
+    ;;
+  retention)
+    # Usage: mixpanel-analytics retention [days]
+    DAYS="${2:-14}"
+    FROM=$(days_ago "$DAYS")
+    curl -s "$BASE/retention?project_id=$PROJECT_ID&from_date=$FROM&to_date=$today&born_event=%22app_arrival%22&event=%22chat_message_sent%22&unit=day" $AUTH
+    ;;
+  summary)
+    # Quick summary: page views + key events for last N days
+    DAYS="${2:-7}"
+    echo "=== Page Views (${DAYS}d) ==="
+    curl -s "$BASE/events?project_id=$PROJECT_ID&type=general&unit=day&interval=$DAYS&event=%5B%22%24mp_web_page_view%22%5D" $AUTH
+    echo ""
+    echo "=== Key Events (${DAYS}d) ==="
+    for evt in app_arrival login_success chat_started chat_message_sent onboarding_completed alert_created_backend; do
+      total=$(curl -s "$BASE/events?project_id=$PROJECT_ID&type=general&unit=month&interval=1&event=%5B%22$evt%22%5D" $AUTH | python3 -c "import json,sys; d=json.load(sys.stdin); vals=list(list(d['data']['values'].values())[0].values()); print(sum(vals))" 2>/dev/null)
+      echo "$evt: $total"
+    done
+    ;;
+  *)
+    echo "Usage: mixpanel-analytics <command> [options]"
+    echo ""
+    echo "Commands:"
+    echo "  summary [days]              Quick summary of key metrics"
+    echo "  page-views [days]           Web page views over time"
+    echo "  signups [days]              Onboarding completions over time"
+    echo "  chat-usage [days]           Chat starts, messages, completions"
+    echo "  logins [days]               Login events over time"
+    echo "  top-events [days]           Top 20 events by volume"
+    echo "  funnel [days]               Arrival→Onboarding→Chat funnel totals"
+    echo "  retention [days]            Retention: arrival → chat usage"
+    echo "  events <name> [days] [unit] Raw event data for any event"
+    echo "  event-list                  List all tracked event names"
+    echo ""
+    echo "Days default: 30 (7 for summary)"
+    ;;
+esac
