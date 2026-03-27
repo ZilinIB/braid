@@ -4,10 +4,9 @@
 
 BEARER="AAAAAAAAAAAAAAAAAAAAANRR8gEAAAAAnFZKc%2F9RT9QsW8Sjt4t%2FWtYykfk%3D542xV6E5poY4ug4CEL4UvssVR2Gw8QkBPtcaUSFXTgHu8wo7AR"
 BASE="https://api.x.com/2"
-AUTH="-H \"Authorization: Bearer $BEARER\""
 
 api() {
-  eval curl -s "$BASE/$1" $AUTH
+  curl -s "$BASE/$1" -H "Authorization: Bearer $BEARER"
 }
 
 case "$1" in
