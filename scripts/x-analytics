@@ -1,0 +1,84 @@
+#!/bin/bash
+# X/Twitter analytics CLI wrapper
+# Usage: x-analytics <command> [options]
+
+BEARER="AAAAAAAAAAAAAAAAAAAAANRR8gEAAAAAnFZKc%2F9RT9QsW8Sjt4t%2FWtYykfk%3D542xV6E5poY4ug4CEL4UvssVR2Gw8QkBPtcaUSFXTgHu8wo7AR"
+BASE="https://api.x.com/2"
+AUTH="-H \"Authorization: Bearer $BEARER\""
+
+api() {
+  eval curl -s "$BASE/$1" $AUTH
+}
+
+case "$1" in
+  profile)
+    # Usage: x-analytics profile <username>
+    [ -z "$2" ] && echo "Usage: x-analytics profile <username>" && exit 1
+    api "users/by/username/$2?user.fields=public_metrics,description,created_at,location,verified,profile_image_url"
+    ;;
+  profiles)
+    # Usage: x-analytics profiles <user1,user2,user3>
+    [ -z "$2" ] && echo "Usage: x-analytics profiles <user1,user2,user3>" && exit 1
+    api "users/by?usernames=$2&user.fields=public_metrics,description,created_at"
+    ;;
+  tweets)
+    # Usage: x-analytics tweets <username> [count]
+    [ -z "$2" ] && echo "Usage: x-analytics tweets <username> [count]" && exit 1
+    COUNT="${3:-10}"
+    # First get user ID
+    USER_ID=$(api "users/by/username/$2" | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['id'])" 2>/dev/null)
+    [ -z "$USER_ID" ] && echo "User not found: $2" && exit 1
+    api "users/$USER_ID/tweets?max_results=$COUNT&tweet.fields=created_at,public_metrics,text"
+    ;;
+  tweet-metrics)
+    # Usage: x-analytics tweet-metrics <username> [count]
+    [ -z "$2" ] && echo "Usage: x-analytics tweet-metrics <username> [count]" && exit 1
+    COUNT="${3:-10}"
+    USER_ID=$(api "users/by/username/$2" | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['id'])" 2>/dev/null)
+    [ -z "$USER_ID" ] && echo "User not found: $2" && exit 1
+    api "users/$USER_ID/tweets?max_results=$COUNT&tweet.fields=created_at,public_metrics" | python3 -c "
+import json,sys
+d = json.load(sys.stdin)
+for t in d.get('data',[]):
+    m = t.get('public_metrics',{})
+    print(f'{t[\"created_at\"][:10]} | likes:{m.get(\"like_count\",0)} rt:{m.get(\"retweet_count\",0)} replies:{m.get(\"reply_count\",0)} views:{m.get(\"impression_count\",0)} | {t[\"text\"][:80]}')
+"
+    ;;
+  followers)
+    # Usage: x-analytics followers <username>
+    [ -z "$2" ] && echo "Usage: x-analytics followers <username>" && exit 1
+    api "users/by/username/$2?user.fields=public_metrics" | python3 -c "
+import json,sys
+d = json.load(sys.stdin)['data']
+m = d['public_metrics']
+print(f'{d[\"username\"]}: {m[\"followers_count\"]} followers, {m[\"following_count\"]} following, {m[\"tweet_count\"]} tweets')
+"
+    ;;
+  search)
+    # Usage: x-analytics search <query> [count]
+    [ -z "$2" ] && echo "Usage: x-analytics search <query> [count]" && exit 1
+    COUNT="${3:-10}"
+    QUERY=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$2'))")
+    api "tweets/search/recent?query=$QUERY&max_results=$COUNT&tweet.fields=created_at,public_metrics,author_id"
+    ;;
+  mentions)
+    # Usage: x-analytics mentions <username> [count]
+    [ -z "$2" ] && echo "Usage: x-analytics mentions <username> [count]" && exit 1
+    COUNT="${3:-10}"
+    USER_ID=$(api "users/by/username/$2" | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['id'])" 2>/dev/null)
+    [ -z "$USER_ID" ] && echo "User not found: $2" && exit 1
+    api "users/$USER_ID/mentions?max_results=$COUNT&tweet.fields=created_at,public_metrics,text"
+    ;;
+  *)
+    echo "Usage: x-analytics <command> [options]"
+    echo ""
+    echo "Commands:"
+    echo "  profile <username>              Full profile with follower/tweet counts"
+    echo "  profiles <user1,user2,...>       Multiple profiles at once"
+    echo "  followers <username>             Quick follower count summary"
+    echo "  tweets <username> [count]        Recent tweets with full data"
+    echo "  tweet-metrics <username> [count] Recent tweets formatted with engagement stats"
+    echo "  mentions <username> [count]      Recent mentions of a user"
+    echo "  search <query> [count]           Search recent tweets"
+    ;;
+esac
