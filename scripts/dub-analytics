@@ -1,0 +1,42 @@
+#!/bin/bash
+# Dub.co analytics CLI wrapper
+# Usage: dub-analytics <command> [options]
+# Commands: summary, top-links, countries, devices, timeseries, links
+
+API_KEY="dub_mwm5aAnzh0eJmJ8v5fj6FWZ6"
+BASE="https://api.dub.co"
+
+case "$1" in
+  summary)
+    INTERVAL="${2:-30d}"
+    curl -s "$BASE/analytics?event=clicks&interval=$INTERVAL" -H "Authorization: Bearer $API_KEY"
+    ;;
+  top-links)
+    INTERVAL="${2:-30d}"
+    curl -s "$BASE/analytics?event=clicks&interval=$INTERVAL&groupBy=top_links" -H "Authorization: Bearer $API_KEY"
+    ;;
+  countries)
+    INTERVAL="${2:-30d}"
+    curl -s "$BASE/analytics?event=clicks&interval=$INTERVAL&groupBy=countries" -H "Authorization: Bearer $API_KEY"
+    ;;
+  devices)
+    INTERVAL="${2:-30d}"
+    curl -s "$BASE/analytics?event=clicks&interval=$INTERVAL&groupBy=devices" -H "Authorization: Bearer $API_KEY"
+    ;;
+  timeseries)
+    INTERVAL="${2:-30d}"
+    curl -s "$BASE/analytics?event=clicks&interval=$INTERVAL&groupBy=timeseries" -H "Authorization: Bearer $API_KEY"
+    ;;
+  referrers)
+    INTERVAL="${2:-30d}"
+    curl -s "$BASE/analytics?event=clicks&interval=$INTERVAL&groupBy=referers" -H "Authorization: Bearer $API_KEY"
+    ;;
+  links)
+    curl -s "$BASE/links?page=${2:-1}&pageSize=${3:-50}" -H "Authorization: Bearer $API_KEY"
+    ;;
+  *)
+    echo "Usage: dub-analytics <command> [interval]"
+    echo "Commands: summary, top-links, countries, devices, timeseries, referrers, links"
+    echo "Intervals: 1h, 24h, 7d, 30d, 90d, ytd, 1y, all"
+    ;;
+esac
