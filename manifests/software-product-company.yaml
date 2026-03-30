@@ -62,9 +62,10 @@ roles:
       - research_analyst
       - qa_guard
     must_not:
-      - deep_domain_execution_except_trivial
+      - run_exec_bash_browser_or_any_domain_tool_directly
       - bypass_canonical_artifacts
       - use_sessions_spawn_without_a_work_order_for_substantive_work
+      - do_work_that_belongs_to_a_specialist_role
 
   product_lead:
     display_name: Product Lead
