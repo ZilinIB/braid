@@ -2,9 +2,10 @@
 # Mixpanel analytics CLI wrapper
 # Usage: mixpanel-analytics <command> [options]
 
-SA_USER="Stan-OC.663d4e.mp-service-account"
-SA_SECRET="ty8Hx6oXlCEvohkvWWCNVxexXIuuKetF"
-PROJECT_ID="3991281"
+source /home/zilinwang/developer/clawspace/.secrets
+SA_USER="$MIXPANEL_SA_USER"
+SA_SECRET="$MIXPANEL_SA_SECRET"
+PROJECT_ID="$MIXPANEL_PROJECT_ID"
 BASE="https://mixpanel.com/api/2.0"
 AUTH="-u $SA_USER:$SA_SECRET"
 

@@ -3,7 +3,8 @@
 # Usage: dub-analytics <command> [options]
 # Commands: summary, top-links, countries, devices, timeseries, links
 
-API_KEY="dub_mwm5aAnzh0eJmJ8v5fj6FWZ6"
+source /home/zilinwang/developer/clawspace/.secrets
+API_KEY="$DUB_API_KEY"
 BASE="https://api.dub.co"
 
 case "$1" in

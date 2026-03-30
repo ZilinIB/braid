@@ -1,0 +1,130 @@
+#!/bin/bash
+# Linear CLI wrapper
+# Usage: linear-cli <command> [options]
+
+source /home/zilinwang/developer/clawspace/.secrets
+API_KEY="$LINEAR_API_KEY"
+API="https://api.linear.app/graphql"
+
+gql() {
+  curl -s "$API" \
+    -H "Authorization: $API_KEY" \
+    -H "Content-Type: application/json" \
+    -d "{\"query\": \"$1\"}"
+}
+
+case "$1" in
+  teams)
+    gql "{ teams { nodes { id name key description } } }"
+    ;;
+  issues)
+    # Usage: linear-cli issues [team_key] [limit]
+    TEAM_KEY="${2:-}"
+    LIMIT="${3:-20}"
+    if [ -n "$TEAM_KEY" ]; then
+      FILTER=", filter: { team: { key: { eq: \\\"$TEAM_KEY\\\" } } }"
+    else
+      FILTER=""
+    fi
+    gql "{ issues(first: $LIMIT, orderBy: updatedAt $FILTER) { nodes { id identifier title state { name } priority assignee { name } createdAt updatedAt labels { nodes { name } } } } }"
+    ;;
+  issue)
+    # Usage: linear-cli issue <identifier> (e.g. ENG-123)
+    [ -z "$2" ] && echo "Usage: linear-cli issue <identifier>" && exit 1
+    gql "{ issue(id: \\\"$2\\\") { id identifier title description state { name } priority priorityLabel assignee { name } team { name key } labels { nodes { name } } createdAt updatedAt completedAt estimate comments { nodes { body user { name } createdAt } } } }"
+    ;;
+  search)
+    # Usage: linear-cli search <query> [limit]
+    [ -z "$2" ] && echo "Usage: linear-cli search <query>" && exit 1
+    LIMIT="${3:-10}"
+    gql "{ searchIssues(term: \\\"$2\\\", first: $LIMIT) { nodes { id identifier title state { name } priority assignee { name } team { key } } } }"
+    ;;
+  my-issues)
+    # Usage: linear-cli my-issues [limit]
+    LIMIT="${2:-20}"
+    gql "{ viewer { assignedIssues(first: $LIMIT, orderBy: updatedAt, filter: { state: { type: { nin: [\\\"completed\\\", \\\"canceled\\\"] } } }) { nodes { id identifier title state { name } priority team { key } updatedAt } } } }"
+    ;;
+  backlog)
+    # Usage: linear-cli backlog [team_key] [limit]
+    TEAM_KEY="${2:-}"
+    LIMIT="${3:-20}"
+    if [ -n "$TEAM_KEY" ]; then
+      FILTER="filter: { team: { key: { eq: \\\"$TEAM_KEY\\\" } }, state: { type: { eq: \\\"backlog\\\" } } }"
+    else
+      FILTER="filter: { state: { type: { eq: \\\"backlog\\\" } } }"
+    fi
+    gql "{ issues(first: $LIMIT, orderBy: priority, $FILTER) { nodes { id identifier title priority priorityLabel assignee { name } labels { nodes { name } } } } }"
+    ;;
+  in-progress)
+    # Usage: linear-cli in-progress [team_key]
+    TEAM_KEY="${2:-}"
+    if [ -n "$TEAM_KEY" ]; then
+      FILTER="filter: { team: { key: { eq: \\\"$TEAM_KEY\\\" } }, state: { type: { eq: \\\"started\\\" } } }"
+    else
+      FILTER="filter: { state: { type: { eq: \\\"started\\\" } } }"
+    fi
+    gql "{ issues(first: 50, orderBy: updatedAt, $FILTER) { nodes { id identifier title state { name } priority assignee { name } team { key } updatedAt } } }"
+    ;;
+  create)
+    # Usage: linear-cli create <team_key> <title> [description]
+    [ -z "$2" ] || [ -z "$3" ] && echo "Usage: linear-cli create <team_key> <title> [description]" && exit 1
+    TEAM_ID=$(gql "{ teams(filter: { key: { eq: \\\"$2\\\" } }) { nodes { id } } }" | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['teams']['nodes'][0]['id'])" 2>/dev/null)
+    [ -z "$TEAM_ID" ] && echo "Team not found: $2" && exit 1
+    DESC="${4:-}"
+    if [ -n "$DESC" ]; then
+      gql "mutation { issueCreate(input: { teamId: \\\"$TEAM_ID\\\", title: \\\"$3\\\", description: \\\"$DESC\\\" }) { success issue { id identifier title url } } }"
+    else
+      gql "mutation { issueCreate(input: { teamId: \\\"$TEAM_ID\\\", title: \\\"$3\\\" }) { success issue { id identifier title url } } }"
+    fi
+    ;;
+  comment)
+    # Usage: linear-cli comment <issue_id> <body>
+    [ -z "$2" ] || [ -z "$3" ] && echo "Usage: linear-cli comment <issue_id> <body>" && exit 1
+    gql "mutation { commentCreate(input: { issueId: \\\"$2\\\", body: \\\"$3\\\" }) { success comment { id createdAt } } }"
+    ;;
+  cycles)
+    # Usage: linear-cli cycles [team_key]
+    TEAM_KEY="${2:-}"
+    if [ -n "$TEAM_KEY" ]; then
+      FILTER="filter: { team: { key: { eq: \\\"$TEAM_KEY\\\" } } }"
+    else
+      FILTER=""
+    fi
+    gql "{ cycles(first: 5, orderBy: createdAt, $FILTER) { nodes { id name number startsAt endsAt completedScopeHistory uncompletedScopeHistory team { key } } } }"
+    ;;
+  projects)
+    # Usage: linear-cli projects [limit]
+    LIMIT="${2:-20}"
+    gql "{ projects(first: $LIMIT, orderBy: updatedAt) { nodes { id name state status { name } lead { name } startDate targetDate progress teams { nodes { key } } } } }"
+    ;;
+  summary)
+    # Usage: linear-cli summary
+    echo '{"in_progress":'
+    gql "{ issues(filter: { state: { type: { eq: \\\"started\\\" } } }) { totalCount } }"
+    echo ',"backlog":'
+    gql "{ issues(filter: { state: { type: { eq: \\\"backlog\\\" } } }) { totalCount } }"
+    echo ',"completed_recently":'
+    gql "{ issues(filter: { state: { type: { eq: \\\"completed\\\" } } }, first: 0) { totalCount } }"
+    echo '}'
+    ;;
+  *)
+    echo "Usage: linear-cli <command> [options]"
+    echo ""
+    echo "Commands:"
+    echo "  teams                          List all teams"
+    echo "  issues [team_key] [limit]      List issues (optionally by team)"
+    echo "  issue <identifier>             Get issue details (e.g. ENG-123)"
+    echo "  search <query> [limit]         Search issues"
+    echo "  my-issues [limit]              Issues assigned to API key owner"
+    echo "  in-progress [team_key]         Currently in-progress issues"
+    echo "  backlog [team_key] [limit]     Backlog issues by priority"
+    echo "  create <team> <title> [desc]   Create a new issue"
+    echo "  comment <issue_id> <body>      Add comment to issue"
+    echo "  cycles [team_key]              Recent cycles/sprints"
+    echo "  projects [limit]               List projects"
+    echo "  summary                        Quick counts overview"
+    echo ""
+    echo "Teams: CBU (Company Building), OPS (Internal Operations),"
+    echo "       DES (Design), ENG (Engineering), GRW (Growth), MAN (Mantadigital)"
+    ;;
+esac
